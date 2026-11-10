@@ -400,3 +400,147 @@ export function calculateBondCashflow(
     schedule,
   };
 }
+
+export interface InstallmentMonthData {
+  month: number;
+  cumulativePrincipal: number;
+  interestEarnedSoFar: number;
+}
+
+/**
+ * UNIT 02: Calculate installment savings (정기적금 - 월초납 단리)
+ */
+export function calculateInstallmentSavings(
+  monthlyDepositWon: number,
+  annualRatePercent: number,
+  months: number
+): {
+  monthlyDepositWon: number;
+  months: number;
+  totalPrincipalWon: number;
+  preTaxInterest: number;
+  interestTax: number;
+  postTaxInterest: number;
+  totalPreTax: number;
+  totalPostTax: number;
+  monthlyBreakdown: InstallmentMonthData[];
+} {
+  const safeMonths = Math.max(1, months);
+  const totalPrincipalWon = monthlyDepositWon * safeMonths;
+  const monthlyRate = (annualRatePercent / 100) / 12;
+
+  // 월초납 단리 공식: 매달 넣은 원금이 남은 개월 수만큼 이자가 붙음
+  // 이자 합 = 월납입액 * 월이율 * (months * (months + 1) / 2)
+  const factor = (safeMonths * (safeMonths + 1)) / 2;
+  const preTaxInterest = Math.floor(monthlyDepositWon * monthlyRate * factor);
+  const interestTax = Math.floor(preTaxInterest * 0.154);
+  const postTaxInterest = preTaxInterest - interestTax;
+
+  const monthlyBreakdown: InstallmentMonthData[] = [];
+  let runningInterest = 0;
+  for (let m = 1; m <= safeMonths; m++) {
+    const cumulativePrincipal = monthlyDepositWon * m;
+    // By month m, all previous deposits have earned interest for that month
+    runningInterest += Math.floor(monthlyDepositWon * m * monthlyRate);
+    monthlyBreakdown.push({
+      month: m,
+      cumulativePrincipal,
+      interestEarnedSoFar: runningInterest,
+    });
+  }
+
+  return {
+    monthlyDepositWon,
+    months: safeMonths,
+    totalPrincipalWon,
+    preTaxInterest,
+    interestTax,
+    postTaxInterest,
+    totalPreTax: totalPrincipalWon + preTaxInterest,
+    totalPostTax: totalPrincipalWon + postTaxInterest,
+    monthlyBreakdown,
+  };
+}
+
+/**
+ * UNIT 02: Compare Fixed Deposit (정기예금) vs Installment Savings (정기적금)
+ * with the same total principal, interest rate, and duration.
+ */
+export function compareDepositAndSavings(
+  totalPrincipalWon: number,
+  annualRatePercent: number,
+  months: number
+): {
+  totalPrincipalWon: number;
+  annualRatePercent: number;
+  months: number;
+  fixedDeposit: {
+    preTaxInterest: number;
+    interestTax: number;
+    totalReceived: number;
+  };
+  installmentSavings: {
+    monthlyDepositWon: number;
+    preTaxInterest: number;
+    interestTax: number;
+    totalReceived: number;
+  };
+  interestDifference: number;
+  explanation: string;
+} {
+  const safeMonths = Math.max(1, months);
+  const rate = annualRatePercent / 100;
+
+  // 정기예금: 목돈 전액이 전체 기간 동안 거치
+  const fdPreTax = Math.floor(totalPrincipalWon * rate * (safeMonths / 12));
+  const fdTax = Math.floor(fdPreTax * 0.154);
+
+  // 정기적금: 매달 나누어 불입
+  const monthlyDepositWon = Math.floor(totalPrincipalWon / safeMonths);
+  const isResult = calculateInstallmentSavings(monthlyDepositWon, annualRatePercent, safeMonths);
+
+  const interestDifference = fdPreTax - isResult.preTaxInterest;
+
+  return {
+    totalPrincipalWon,
+    annualRatePercent,
+    months: safeMonths,
+    fixedDeposit: {
+      preTaxInterest: fdPreTax,
+      interestTax: fdTax,
+      totalReceived: totalPrincipalWon + (fdPreTax - fdTax),
+    },
+    installmentSavings: {
+      monthlyDepositWon,
+      preTaxInterest: isResult.preTaxInterest,
+      interestTax: isResult.interestTax,
+      totalReceived: isResult.totalPostTax,
+    },
+    interestDifference,
+    explanation: `정기예금은 처음부터 전체 목돈(${formatWon(totalPrincipalWon)})이 은행에 맡겨져 ${safeMonths}개월 내내 이자가 붙지만, 정기적금은 매달 나누어 납입하므로 뒤에 넣은 돈일수록 이자가 붙는 기간이 짧아 이자 총액이 적습니다.`,
+  };
+}
+
+/**
+ * UNIT 02: Calculate demand deposit (보통예금) estimated interest
+ */
+export function calculateDemandDepositInterest(
+  balanceWon: number,
+  annualRatePercent: number,
+  days: number = 30
+): {
+  preTaxInterest: number;
+  interestTax: number;
+  postTaxInterest: number;
+} {
+  const rate = Math.max(0, annualRatePercent) / 100;
+  const safeDays = Math.max(0, days);
+  const preTaxInterest = Math.floor(balanceWon * rate * (safeDays / 365));
+  const interestTax = Math.floor(preTaxInterest * 0.154);
+  return {
+    preTaxInterest,
+    interestTax,
+    postTaxInterest: preTaxInterest - interestTax,
+  };
+}
+

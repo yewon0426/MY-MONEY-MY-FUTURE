@@ -78,7 +78,7 @@ const ASSET_ITEMS: AssetItem[] = [
     category: 'real',
     icon: '🪙',
     shortDesc: '귀금속 실물 금괴',
-    explanation: '금이라는 희소한 원자재 자체의 물리적 실체와 내재적 가치를 지닌 "실물 자산"입니다.',
+    explanation: '금이라는 희소한 원자재 자체의 물리적 실체와 내재적 가치를 지닌 "실물 자산"입니다. (※ 반면 증권사에서 사고파는 "금 ETF"는 금융상의 청구권이므로 금융 자산입니다!)',
   },
   {
     id: '8',
@@ -86,7 +86,7 @@ const ASSET_ITEMS: AssetItem[] = [
     category: 'financial',
     icon: '💵',
     shortDesc: '지갑 속 현금 50만 원',
-    explanation: '종이 자체의 실물 가치가 아니라 한국은행의 신용에 기반한 특수한 "화폐·금융 자산"입니다!',
+    explanation: '종이 자체의 원자재 가치가 아니라 한국은행의 신용과 국가의 법적 강제통용력에 기반한 특수한 "화폐·금융 자산"입니다!',
   },
 ];
 
@@ -153,9 +153,14 @@ export const Page01RealVsFinancial: React.FC<Page01Props> = ({ resetSignal }) =>
             </p>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-blue-900 font-semibold flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>장점: 유동성이 높고 보관 및 거래가 편리함 / 주의: 인플레이션 시 실질 가치 하락</span>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 text-[11px] text-blue-900 font-semibold space-y-1">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>장점: 유동성이 높고 보관·거래가 편리함 / 주의: 상품마다 위험·유동성이 천차만별!</span>
+            </div>
+            <p className="text-[10px] text-slate-500 pl-5">
+              ※ 예금은 원금이 안전하지만 주식은 원금 손실 위험이 크며, 같은 금융 자산이라도 상품마다 성격이 다릅니다.
+            </p>
           </div>
         </div>
 
@@ -183,9 +188,14 @@ export const Page01RealVsFinancial: React.FC<Page01Props> = ({ resetSignal }) =>
             </p>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-amber-900 font-semibold flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>장점: 물가 상승(인플레이션) 헤지 효과 / 주의: 감가상각, 관리비 발생, 유동성 낮음</span>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 text-[11px] text-amber-900 font-semibold space-y-1">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>장점: 물가 상승(인플레이션) 헤지 효과 / 주의: 감가상각, 보관·관리 비용, 낮은 유동성</span>
+            </div>
+            <p className="text-[10px] text-slate-500 pl-5">
+              ※ 실물 금괴(골드바)는 실물 자산이지만, 증권계좌에서 거래하는 '금 ETF'는 금융상의 권리(금융 자산)입니다.
+            </p>
           </div>
         </div>
       </div>

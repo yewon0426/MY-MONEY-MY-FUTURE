@@ -13,6 +13,8 @@ import {
   calculateCompoundInterest,
   calculateStockReturn,
   calculateBondCashflow,
+  calculateInstallmentSavings,
+  compareDepositAndSavings,
 } from './finance';
 
 test('calculateNetSalary computes realistic 3,000,000 KRW salary take-home ~ 2.65 million', () => {
@@ -154,3 +156,29 @@ test('calculateBondCashflow simulates 1,000,000 KRW 3% 3-year treasury bond', ()
   assert.equal(bond.schedule[0].totalCashflow, 30000);
   assert.equal(bond.schedule[2].totalCashflow, 1030000);
 });
+
+test('calculateInstallmentSavings computes 100,000 KRW/mo for 12 months at 4%', () => {
+  // Monthly 100k, 12 months, 4%
+  // Principal: 1,200,000 KRW
+  // Pre-tax interest: 100,000 * (0.04 / 12) * (12 * 13 / 2) = 100,000 * 0.0033333 * 78 = 26,000 KRW
+  const isRes = calculateInstallmentSavings(100000, 4, 12);
+  assert.equal(isRes.totalPrincipalWon, 1200000);
+  assert.equal(isRes.preTaxInterest, 26000);
+  assert.equal(isRes.interestTax, 4004); // 26000 * 0.154 = 4004
+  assert.equal(isRes.postTaxInterest, 21996);
+  assert.equal(isRes.totalPreTax, 1226000);
+  assert.equal(isRes.totalPostTax, 1221996);
+  assert.equal(isRes.monthlyBreakdown.length, 12);
+});
+
+test('compareDepositAndSavings demonstrates deposit interest is greater than savings for same total', () => {
+  // Total 1,200,000 KRW, 4%, 12 months
+  // Fixed Deposit: 1,200,000 * 0.04 = 48,000 KRW
+  // Installment Savings: 100,000 * 12 at 4% = 26,000 KRW
+  const comp = compareDepositAndSavings(1200000, 4, 12);
+  assert.equal(comp.fixedDeposit.preTaxInterest, 48000);
+  assert.equal(comp.installmentSavings.preTaxInterest, 26000);
+  assert.equal(comp.interestDifference, 22000);
+  assert.ok(comp.fixedDeposit.preTaxInterest > comp.installmentSavings.preTaxInterest);
+});
+
