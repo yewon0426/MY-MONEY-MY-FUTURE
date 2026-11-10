@@ -1,0 +1,8 @@
+{
+  "name": "고1 통합사회2 — 금융 생활의 첫걸음",
+  "description": "고등학교 1학년 통합사회2 자산 관리와 금융 생활 설계 단원의 교사용 인터랙티브 전자칠판 웹 교과서",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
