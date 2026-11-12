@@ -26,10 +26,21 @@ import { Page05FundEtf } from './components/pages/unit2/Page05FundEtf';
 import { Page06InsurancePension } from './components/pages/unit2/Page06InsurancePension';
 import { Page07ComprehensiveComparison } from './components/pages/unit2/Page07ComprehensiveComparison';
 
+// Unit 3 Components (8 Pages)
+import { Page01WhereToPut } from './components/pages/unit3/Page01WhereToPut';
+import { Page02ThreePrinciples } from './components/pages/unit3/Page02ThreePrinciples';
+import { Page03RiskAndReturn } from './components/pages/unit3/Page03RiskAndReturn';
+import { Page04RationalChoiceCost } from './components/pages/unit3/Page04RationalChoiceCost';
+import { Page05PortfolioSimulator } from './components/pages/unit3/Page05PortfolioSimulator';
+import { Page06RiskCards } from './components/pages/unit3/Page06RiskCards';
+import { Page07ChooseMyProduct } from './components/pages/unit3/Page07ChooseMyProduct';
+import { Page08ComprehensiveChallenge } from './components/pages/unit3/Page08ComprehensiveChallenge';
+
 import { ChevronLeft, ChevronRight, Lightbulb, BookOpen } from 'lucide-react';
 
 const UNIT1_PAGES_COUNT = 11;
 const UNIT2_PAGES_COUNT = 7;
+const UNIT3_PAGES_COUNT = 8;
 
 const UNIT1_PAGE_TITLES = [
   '30살의 나는 얼마를 벌고 있을까?',
@@ -55,6 +66,17 @@ const UNIT2_PAGE_TITLES = [
   '금융상품 8종 종합 비교 & 실전 매칭',
 ];
 
+const UNIT3_PAGE_TITLES = [
+  '도입 — 100만 원, 어디에 둘까?',
+  '자산 관리의 세 가지 원칙',
+  '금융상품의 위험과 기대수익률',
+  '합리적 선택과 기회비용',
+  '분산 투자 시뮬레이터',
+  '금융상품 위험 상황 카드',
+  '나에게 맞는 금융상품 선택하기',
+  '종합 의사결정 챌린지',
+];
+
 export default function App() {
   const [currentUnit, setCurrentUnit] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -62,10 +84,26 @@ export default function App() {
   const [isCurriculumOpen, setIsCurriculumOpen] = useState<boolean>(false);
   const [resetSignals, setResetSignals] = useState<Record<string, number>>({});
 
-  const totalPagesInUnit = currentUnit === 1 ? UNIT1_PAGES_COUNT : UNIT2_PAGES_COUNT;
-  const pageTitles = currentUnit === 1 ? UNIT1_PAGE_TITLES : UNIT2_PAGE_TITLES;
+  const totalPagesInUnit =
+    currentUnit === 1
+      ? UNIT1_PAGES_COUNT
+      : currentUnit === 2
+      ? UNIT2_PAGES_COUNT
+      : UNIT3_PAGES_COUNT;
+
+  const pageTitles =
+    currentUnit === 1
+      ? UNIT1_PAGE_TITLES
+      : currentUnit === 2
+      ? UNIT2_PAGE_TITLES
+      : UNIT3_PAGE_TITLES;
+
   const unitTitle =
-    currentUnit === 1 ? '금융 생활의 시작' : '금융 자산의 종류와 특징';
+    currentUnit === 1
+      ? '금융 생활의 시작'
+      : currentUnit === 2
+      ? '금융 자산의 종류와 특징'
+      : '합리적인 자산 관리와 금융 의사결정';
 
   // Smartboard keyboard shortcuts
   useEffect(() => {
@@ -89,7 +127,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentUnit, currentPage]);
+  }, [currentUnit, currentPage, totalPagesInUnit]);
 
   const handleNextPage = () => {
     if (currentPage < totalPagesInUnit) {
@@ -97,6 +135,10 @@ export default function App() {
     } else if (currentUnit === 1) {
       // Seamless progression into Unit 2
       setCurrentUnit(2);
+      setCurrentPage(1);
+    } else if (currentUnit === 2) {
+      // Seamless progression into Unit 3
+      setCurrentUnit(3);
       setCurrentPage(1);
     }
   };
@@ -108,11 +150,15 @@ export default function App() {
       // Return to last page of Unit 1
       setCurrentUnit(1);
       setCurrentPage(UNIT1_PAGES_COUNT);
+    } else if (currentUnit === 3) {
+      // Return to last page of Unit 2
+      setCurrentUnit(2);
+      setCurrentPage(UNIT2_PAGES_COUNT);
     }
   };
 
   const handleSelectUnit = (unitNumber: number) => {
-    if (unitNumber === 1 || unitNumber === 2) {
+    if (unitNumber === 1 || unitNumber === 2 || unitNumber === 3) {
       setCurrentUnit(unitNumber);
       setCurrentPage(1);
     }
@@ -158,7 +204,7 @@ export default function App() {
         default:
           return <Page1Salary resetSignal={currentResetSignal} />;
       }
-    } else {
+    } else if (currentUnit === 2) {
       switch (currentPage) {
         case 1:
           return <Page01RealVsFinancial resetSignal={currentResetSignal} />;
@@ -177,11 +223,33 @@ export default function App() {
         default:
           return <Page01RealVsFinancial resetSignal={currentResetSignal} />;
       }
+    } else {
+      // Unit 3
+      switch (currentPage) {
+        case 1:
+          return <Page01WhereToPut resetSignal={currentResetSignal} />;
+        case 2:
+          return <Page02ThreePrinciples resetSignal={currentResetSignal} />;
+        case 3:
+          return <Page03RiskAndReturn resetSignal={currentResetSignal} />;
+        case 4:
+          return <Page04RationalChoiceCost resetSignal={currentResetSignal} />;
+        case 5:
+          return <Page05PortfolioSimulator resetSignal={currentResetSignal} />;
+        case 6:
+          return <Page06RiskCards resetSignal={currentResetSignal} />;
+        case 7:
+          return <Page07ChooseMyProduct resetSignal={currentResetSignal} />;
+        case 8:
+          return <Page08ComprehensiveChallenge resetSignal={currentResetSignal} />;
+        default:
+          return <Page01WhereToPut resetSignal={currentResetSignal} />;
+      }
     }
   };
 
   const isFirstOverallPage = currentUnit === 1 && currentPage === 1;
-  const isLastOverallPage = currentUnit === 2 && currentPage === UNIT2_PAGES_COUNT;
+  const isLastOverallPage = currentUnit === 3 && currentPage === UNIT3_PAGES_COUNT;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#FDFBF7] text-slate-900 overflow-hidden font-sans select-none">
@@ -218,7 +286,11 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span
               className={`font-black px-2 py-0.5 rounded text-[11px] ${
-                currentUnit === 1 ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                currentUnit === 1
+                  ? 'bg-blue-100 text-blue-800'
+                  : currentUnit === 2
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-purple-100 text-purple-800'
               }`}
             >
               UNIT 0{currentUnit}

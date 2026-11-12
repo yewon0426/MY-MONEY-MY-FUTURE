@@ -56,11 +56,20 @@ const UNITS: UnitInfo[] = [
   },
   {
     number: 3,
-    title: '합리적인 자산 관리',
-    subtitle: '수익성·안전성·유동성 트릴레마와 나만의 포트폴리오 설계',
-    pagesCount: 6,
-    status: 'upcoming',
-    topics: ['자산 배분 3대 원칙', '연령별 위험 감수 성향', '포트폴리오 리밸런싱'],
+    title: '합리적인 자산 관리와 금융 의사결정',
+    subtitle: '3대 원칙, 위험과 기대수익, 기회비용, 분산 투자 포트폴리오',
+    pagesCount: 8,
+    status: 'active',
+    topics: [
+      '100만 원, 어디에 둘까? (상황별 선택)',
+      '자산 관리 3대 원칙 (삼각형 시각화)',
+      '금융상품의 위험과 기대수익률',
+      '합리적 선택과 기회비용',
+      '분산 투자 시뮬레이터 (100% 자산 배분)',
+      '금융상품 위험 상황 카드 5종',
+      '나에게 맞는 금융상품 선택하기',
+      '종합 의사결정 챌린지 (500만 원 배분)',
+    ],
   },
   {
     number: 4,
@@ -147,6 +156,8 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                           ? 'bg-blue-600 text-white'
                           : unit.number === 2
                           ? 'bg-emerald-600 text-white'
+                          : unit.number === 3
+                          ? 'bg-purple-600 text-white'
                           : 'bg-slate-200 text-slate-600'
                       }`}
                     >
@@ -160,7 +171,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                     )}
                     {unit.status === 'active' && (
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5" /> 7차시 학습 가능
+                        <Sparkles className="w-3.5 h-3.5" /> {unit.pagesCount}차시 학습 가능
                       </span>
                     )}
                     {unit.status === 'upcoming' && (

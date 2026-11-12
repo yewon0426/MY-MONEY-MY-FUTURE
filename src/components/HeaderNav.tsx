@@ -67,7 +67,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             <span>단원 목차</span>
           </button>
 
-          {/* Unit 1 / Unit 2 Direct Toggle Buttons */}
+          {/* Unit 1 / Unit 2 / Unit 3 Direct Toggle Buttons */}
           <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
             <button
               onClick={() => onSelectUnit(1)}
@@ -89,13 +89,25 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             >
               UNIT 02
             </button>
+            <button
+              onClick={() => onSelectUnit(3)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                currentUnit === 3
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              UNIT 03
+            </button>
           </div>
 
           <div className="h-4 w-px bg-slate-700 hidden sm:block" />
 
           <h1 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2 truncate max-w-xs md:max-w-md">
-            <span className={`font-black ${currentUnit === 1 ? 'text-blue-400' : 'text-emerald-400'}`}>
-              {currentUnit === 1 ? 'UNIT 01' : 'UNIT 02'}
+            <span className={`font-black ${
+              currentUnit === 1 ? 'text-blue-400' : currentUnit === 2 ? 'text-emerald-400' : 'text-purple-400'
+            }`}>
+              UNIT 0{currentUnit}
             </span>
             <span className="truncate text-slate-200">{unitTitle}</span>
           </h1>
