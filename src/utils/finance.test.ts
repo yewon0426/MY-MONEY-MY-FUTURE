@@ -15,6 +15,13 @@ import {
   calculateBondCashflow,
   calculateInstallmentSavings,
   compareDepositAndSavings,
+  createInitialStockPortfolio,
+  executeStockBuy,
+  executeStockSell,
+  computeStockPortfolioMetrics,
+  calculateBondTradingResult,
+  calculateBondPresentValue,
+  generateBondPriceCurve,
 } from './finance';
 
 test('calculateNetSalary computes realistic 3,000,000 KRW salary take-home ~ 2.65 million', () => {
@@ -180,5 +187,96 @@ test('compareDepositAndSavings demonstrates deposit interest is greater than sav
   assert.equal(comp.installmentSavings.preTaxInterest, 26000);
   assert.equal(comp.interestDifference, 22000);
   assert.ok(comp.fixedDeposit.preTaxInterest > comp.installmentSavings.preTaxInterest);
+});
+
+test('virtual stock trading portfolio handles buy, weighted avg price, partial/full sell, and validation', () => {
+  const initial = createInitialStockPortfolio(1000000);
+  assert.equal(initial.cashWon, 1000000);
+  assert.equal(initial.sharesHeld, 0);
+  assert.equal(initial.avgBuyPrice, 0);
+  assert.equal(initial.realizedPnL, 0);
+
+  // Buy 5 shares at 50,000 KRW -> cost 250,000, cash 750,000, avg 50,000
+  const buy1 = executeStockBuy(initial, 50000, 5);
+  assert.equal(buy1.ok, true);
+  assert.equal(buy1.state.cashWon, 750000);
+  assert.equal(buy1.state.sharesHeld, 5);
+  assert.equal(buy1.state.avgBuyPrice, 50000);
+
+  // Buy 5 more shares at 70,000 KRW -> cost 350,000, cash 400,000, avg (250k+350k)/10 = 60,000
+  const buy2 = executeStockBuy(buy1.state, 70000, 5);
+  assert.equal(buy2.ok, true);
+  assert.equal(buy2.state.cashWon, 400000);
+  assert.equal(buy2.state.sharesHeld, 10);
+  assert.equal(buy2.state.avgBuyPrice, 60000);
+
+  // Reject overspending
+  const badBuy = executeStockBuy(buy2.state, 100000, 10);
+  assert.equal(badBuy.ok, false);
+  assert.equal(badBuy.state.cashWon, 400000);
+
+  // Unrealized PnL at 75,000 KRW -> (75k - 60k) * 10 = +150,000, total assets = 400k + 750k = 1,150,000
+  const metrics = computeStockPortfolioMetrics(buy2.state, 75000, 1000000);
+  assert.equal(metrics.unrealizedPnL, 150000);
+  assert.equal(metrics.totalAssetsWon, 1150000);
+  assert.equal(metrics.totalNetReturnWon, 150000);
+
+  // Partial sell: sell 4 shares at 75,000 KRW -> realizedPnL +60,000, remaining 6 shares, avg remains 60,000
+  const sell1 = executeStockSell(buy2.state, 75000, 4);
+  assert.equal(sell1.ok, true);
+  assert.equal(sell1.tradePnL, 60000);
+  assert.equal(sell1.state.realizedPnL, 60000);
+  assert.equal(sell1.state.sharesHeld, 6);
+  assert.equal(sell1.state.avgBuyPrice, 60000);
+  assert.equal(sell1.state.cashWon, 700000);
+
+  // Reject oversell
+  const badSell = executeStockSell(sell1.state, 75000, 7);
+  assert.equal(badSell.ok, false);
+
+  // Full sell: sell remaining 6 shares at 55,000 KRW -> tradePnL -30,000, total realizedPnL +30,000, avg resets to 0
+  const sell2 = executeStockSell(sell1.state, 55000, 6);
+  assert.equal(sell2.ok, true);
+  assert.equal(sell2.tradePnL, -30000);
+  assert.equal(sell2.state.realizedPnL, 30000);
+  assert.equal(sell2.state.sharesHeld, 0);
+  assert.equal(sell2.state.avgBuyPrice, 0);
+  assert.equal(sell2.state.cashWon, 1030000);
+});
+
+test('calculateBondTradingResult computes capital gain and holding coupons accurately', () => {
+  // Buy at 1,000,000, sell at 1,050,000 after 1 year with 3% coupon on 1,000,000 face value
+  const res = calculateBondTradingResult(1000000, 3, 1000000, 1050000, 1);
+  assert.equal(res.capitalGainWon, 50000);
+  assert.equal(res.holdingCouponsWon, 30000);
+  assert.equal(res.totalReturnWon, 80000);
+  assert.equal(res.returnRatePercent, 8);
+  assert.equal(res.isProfit, true);
+
+  // Loss scenario: buy at 1,000,000, sell at 950,000 after 0 years
+  const lossRes = calculateBondTradingResult(1000000, 3, 1000000, 950000, 0);
+  assert.equal(lossRes.capitalGainWon, -50000);
+  assert.equal(lossRes.totalReturnWon, -50000);
+  assert.equal(lossRes.isProfit, false);
+});
+
+test('calculateBondPresentValue and generateBondPriceCurve show inverse rate-price relationship', () => {
+  // When market rate == coupon rate (3%), PV equals face value (1,000,000)
+  const parPrice = calculateBondPresentValue(1000000, 3, 3, 3);
+  assert.equal(parPrice, 1000000);
+
+  // When market rate rises to 5%, existing 3% bond price drops below face value
+  const discountPrice = calculateBondPresentValue(1000000, 3, 5, 3);
+  assert.ok(discountPrice < 1000000);
+
+  // When market rate drops to 1%, existing 3% bond price rises above face value
+  const premiumPrice = calculateBondPresentValue(1000000, 3, 1, 3);
+  assert.ok(premiumPrice > 1000000);
+
+  const curve = generateBondPriceCurve(1000000, 3, 3, [1, 3, 5]);
+  assert.equal(curve.length, 3);
+  assert.ok(curve[0].bondPriceWon > curve[1].bondPriceWon);
+  assert.ok(curve[1].bondPriceWon > curve[2].bondPriceWon);
+  assert.equal(curve[1].bondPriceWon, 1000000);
 });
 

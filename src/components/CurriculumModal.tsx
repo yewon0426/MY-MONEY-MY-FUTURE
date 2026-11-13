@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, CheckCircle2, Clock, Sparkles, ChevronRight, Lock } from 'lucide-react';
+import { X, BookOpen, CheckCircle2, Sparkles, ChevronRight, Lock } from 'lucide-react';
 
 interface CurriculumModalProps {
   isOpen: boolean;
@@ -34,24 +34,24 @@ const UNITS: UnitInfo[] = [
       '소득·지출·저축·투자 퀴즈',
       '자산 = 부채 + 순자산',
       '금융상품과 3대 원칙',
-      'EBS 다큐 금융 영상 시청',
+      '금융 다큐 영상 시청',
       '1차시 수업 마무리 및 성찰',
     ],
   },
   {
     number: 2,
     title: '금융 자산의 종류와 특징',
-    subtitle: '예적금, 주식, 채권, 펀드·ETF, 보험과 연금 종합',
+    subtitle: '예적금, 주식(가상매매), 채권(금리-가격), 펀드·ETF, 보험·연금',
     pagesCount: 7,
     status: 'active',
     topics: [
       '금융 자산 vs 실물 자산 구분',
-      '예금과 적금 · 단리와 복리 시뮬레이터',
-      '주식과 주주의 권리 (10주 모의투자)',
-      '채권과 확정 이자 (국채 3년물 현금흐름)',
-      '펀드와 ETF (계란 바구니 분산투자)',
-      '보험과 연금 (상부상조 & 3층 보장)',
-      '금융상품 8종 종합 매트릭스 & 시나리오 매칭',
+      '보통예금·정기예금·정기적금 & 1억 원 예금자보호',
+      '주식 이해·주가 실험·가상 매수·매도',
+      '채권 이해·이자수익·매매차익·금리와 채권 가격',
+      '펀드와 ETF 분산투자',
+      '보험과 연금 (3층 보장 체계)',
+      '금융상품 8종 종합 비교 & 실전 매칭',
     ],
   },
   {
@@ -106,33 +106,44 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in select-none">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="curriculum-modal-title"
+      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6 select-none"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
+        <div className="px-8 py-5 bg-slate-900 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center shrink-0">
+              <BookOpen className="w-7 h-7 text-white" />
             </div>
             <div>
-              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider block">
-                2022 개정 고등학교 통합사회2
+              <span className="text-base font-bold text-blue-300 block">
+                2022 개정 고등학교 통합사회2 · 자산 관리와 금융 생활 설계
               </span>
-              <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                전체 단원 목차 (Curriculum Overview)
+              <h2 id="curriculum-modal-title" className="text-[28px] xl:text-[32px] font-black text-white">
+                전체 단원 목차
               </h2>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="목차 닫기"
+            className="min-h-[56px] min-w-[56px] flex items-center justify-center rounded-2xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-8 h-8" />
           </button>
         </div>
 
         {/* Units List */}
-        <div className="p-6 overflow-y-auto space-y-3.5 bg-[#FDFBF7]">
+        <div className="p-8 overflow-y-auto space-y-5 bg-[#FDFBF7]">
           {UNITS.map((unit) => {
             const isCurrent = unit.number === currentUnit;
             const isAvailable = unit.status !== 'upcoming';
@@ -140,87 +151,72 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
             return (
               <div
                 key={unit.number}
-                className={`p-4 rounded-2xl border-2 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                className={`p-6 rounded-3xl border-2 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 ${
                   isCurrent
-                    ? 'bg-blue-50/80 border-blue-500 shadow-md ring-2 ring-blue-200'
+                    ? 'bg-blue-50 border-blue-500 shadow-md'
                     : isAvailable
-                    ? 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
-                    : 'bg-slate-50 border-slate-200 opacity-60'
+                    ? 'bg-white border-slate-200 hover:border-slate-300'
+                    : 'bg-slate-50 border-slate-200 opacity-65'
                 }`}
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-2 flex-1">
+                  <div className="flex flex-wrap items-center gap-3 text-base font-black">
                     <span
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-black ${
+                      className={
                         unit.number === 1
-                          ? 'bg-blue-600 text-white'
+                          ? 'text-blue-700'
                           : unit.number === 2
-                          ? 'bg-emerald-600 text-white'
+                          ? 'text-emerald-700'
                           : unit.number === 3
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-slate-200 text-slate-600'
-                      }`}
+                          ? 'text-purple-700'
+                          : 'text-slate-500'
+                      }
                     >
                       UNIT 0{unit.number}
                     </span>
-
+                    <span className="text-slate-300">·</span>
                     {unit.status === 'completed' && (
-                      <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> 11차시 완료
+                      <span className="text-blue-800 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-5 h-5" /> {unit.pagesCount}차시 완성
                       </span>
                     )}
                     {unit.status === 'active' && (
-                      <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5" /> {unit.pagesCount}차시 학습 가능
+                      <span className="text-emerald-800 flex items-center gap-1.5">
+                        <Sparkles className="w-5 h-5" /> {unit.pagesCount}차시 학습 가능
                       </span>
                     )}
                     {unit.status === 'upcoming' && (
-                      <span className="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> 추후 제작 예정
+                      <span className="text-slate-500 flex items-center gap-1.5">
+                        <Lock className="w-4 h-4" /> 추후 제작 예정
                       </span>
                     )}
                   </div>
 
-                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                  <h3 className="text-[26px] xl:text-[28px] font-black text-slate-900">
                     {unit.title}
                   </h3>
-                  <p className="text-xs text-slate-600">{unit.subtitle}</p>
-
-                  <div className="pt-2 flex flex-wrap gap-1.5">
-                    {unit.topics.slice(0, 4).map((topic, i) => (
-                      <span
-                        key={i}
-                        className="text-[10px] px-2 py-0.5 bg-white border border-slate-200 text-slate-600 rounded-md font-medium"
-                      >
-                        {topic}
-                      </span>
-                    ))}
-                    {unit.topics.length > 4 && (
-                      <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md font-semibold">
-                        +{unit.topics.length - 4}개 더보기
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-[20px] text-slate-700 font-medium">{unit.subtitle}</p>
                 </div>
 
-                <div className="shrink-0 flex items-center gap-2">
+                <div className="shrink-0">
                   {isAvailable ? (
                     <button
+                      type="button"
                       onClick={() => {
                         onSelectUnit(unit.number);
                         onClose();
                       }}
-                      className={`px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                      className={`min-h-[60px] px-7 py-3 rounded-2xl font-black text-xl transition-all flex items-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap ${
                         isCurrent
                           ? 'bg-blue-600 text-white hover:bg-blue-700'
                           : 'bg-slate-900 text-white hover:bg-slate-800'
                       }`}
                     >
-                      <span>{isCurrent ? '현재 단원 학습 중' : '이 단원으로 이동'}</span>
-                      <ChevronRight className="w-4 h-4" />
+                      <span>{isCurrent ? '현재 학습 중' : '이 단원으로 이동'}</span>
+                      <ChevronRight className="w-6 h-6" />
                     </button>
                   ) : (
-                    <span className="text-xs text-slate-400 font-bold px-3 py-2 bg-slate-100 rounded-xl">
+                    <span className="inline-block text-lg text-slate-500 font-bold px-5 py-3 bg-slate-100 rounded-2xl">
                       추후 제작 예정
                     </span>
                   )}
@@ -231,11 +227,12 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <span>총 6개 단원 중 UNIT 01 (11차시) & UNIT 02 (7차시) 총 18개 학습 페이지 제공</span>
+        <div className="px-8 py-4 bg-white border-t border-slate-200 flex items-center justify-between text-lg text-slate-700 shrink-0">
+          <span className="font-bold">UNIT 01 (11p) · UNIT 02 (7p) · UNIT 03 (8p) 총 26페이지</span>
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+            className="min-h-[56px] px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl cursor-pointer text-lg"
           >
             닫기
           </button>

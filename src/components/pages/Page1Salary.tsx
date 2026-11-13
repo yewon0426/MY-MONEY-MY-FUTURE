@@ -1,29 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { calculateNetSalary, formatWon } from '../../utils/finance';
 import { VoteOption } from '../../types';
-import { Users, HelpCircle, CheckCircle2, Plus, Minus, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Plus, Minus, CheckCircle2, Info, ArrowRight } from 'lucide-react';
 
 interface Page1Props {
   resetSignal: number;
 }
+
+type SalaryStep = 'step1' | 'step2';
 
 const INITIAL_OPTIONS: VoteOption[] = [
   { id: 'opt1', label: '250만 원', amountWon: 2500000, votes: 4 },
   { id: 'opt2', label: '300만 원', amountWon: 3000000, votes: 12 },
   { id: 'opt3', label: '400만 원', amountWon: 4000000, votes: 8 },
   { id: 'opt4', label: '500만 원', amountWon: 5000000, votes: 6 },
-  { id: 'opt5', label: '700만 원 이상', amountWon: 7000000, votes: 3 },
+  { id: 'opt5', label: '700만 원+', amountWon: 7000000, votes: 3 },
 ];
 
 export const Page1Salary: React.FC<Page1Props> = ({ resetSignal }) => {
+  const [activeStep, setActiveStep] = useState<SalaryStep>('step1');
   const [options, setOptions] = useState<VoteOption[]>(INITIAL_OPTIONS);
-  const [showDeductionModal, setShowDeductionModal] = useState<boolean>(false);
   const [selectedGrossSalary, setSelectedGrossSalary] = useState<number>(3000000);
 
-  // Sync with reset signal
-  React.useEffect(() => {
+  useEffect(() => {
+    setActiveStep('step1');
     setOptions(INITIAL_OPTIONS);
-    setShowDeductionModal(false);
     setSelectedGrossSalary(3000000);
   }, [resetSignal]);
 
@@ -35,8 +36,7 @@ export const Page1Salary: React.FC<Page1Props> = ({ resetSignal }) => {
     );
   };
 
-  const decrementVote = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const decrementVote = (id: string) => {
     setOptions((prev) =>
       prev.map((opt) =>
         opt.id === id ? { ...opt, votes: Math.max(0, opt.votes - 1) } : opt
@@ -47,252 +47,243 @@ export const Page1Salary: React.FC<Page1Props> = ({ resetSignal }) => {
   const salaryBreakdown = calculateNetSalary(selectedGrossSalary);
 
   return (
-    <div className="w-full h-full flex flex-col justify-between p-6 sm:p-10 max-w-[1700px] mx-auto animate-fade-in">
-      {/* Question Header */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-100/80 text-blue-800 text-sm font-bold tracking-wide">
-          <HelpCircle className="w-4 h-4 text-blue-600" />
-          <span>도입 질문 · 교실 실시간 투표</span>
+    <div className="flex-1 w-full max-w-[1720px] mx-auto px-8 xl:px-12 py-6 flex flex-col gap-6">
+      {/* Header & STEP Tabs */}
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5 border-b border-slate-200 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5 text-[20px] font-bold text-blue-700">
+            <span>UNIT 01</span>
+            <span aria-hidden="true">·</span>
+            <span>PAGE 1</span>
+            <span aria-hidden="true">·</span>
+            <span>도입 질문과 소득의 현실</span>
+          </div>
+          <h2 className="text-[40px] xl:text-[46px] font-black text-slate-900 tracking-tight leading-tight mt-1">
+            30살의 희망 월급과 실수령액의 비밀
+          </h2>
         </div>
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight text-balance leading-tight">
-          "여러분은 30살이 되었을 때 한 달에 얼마를 벌고 싶나요?"
-        </h2>
-        <p className="text-slate-600 text-lg sm:text-xl font-medium">
-          화면의 선택지를 터치하면 학생들의 응답 수가 실시간으로 집계됩니다.
-        </p>
+
+        <nav
+          aria-label="월급과 실수령액 학습 단계"
+          className="grid grid-cols-2 gap-2.5 bg-slate-200/80 p-2 rounded-2xl shrink-0"
+        >
+          {[
+            { id: 'step1' as const, label: 'STEP 1. 희망 월급 투표' },
+            { id: 'step2' as const, label: 'STEP 2. 세전 vs 실수령액' },
+          ].map((tab) => {
+            const isActive = activeStep === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveStep(tab.id)}
+                className={`min-h-[60px] px-6 py-3 rounded-xl text-[20px] xl:text-[22px] font-black transition-all cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white/70 text-slate-700 hover:bg-white hover:text-slate-950'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* Main Voting Grid & Live Graph */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 my-6">
-        {options.map((opt) => {
-          const percentage = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
-          return (
-            <div
-              key={opt.id}
-              onClick={() => incrementVote(opt.id)}
-              className="bg-white border-2 border-slate-200 hover:border-blue-500 rounded-3xl p-5 sm:p-6 shadow-sm hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+      {/* ================= STEP 1. 희망 월급 투표 ================= */}
+      {activeStep === 'step1' && (
+        <div className="flex-1 flex flex-col justify-between gap-6">
+          <div className="bg-slate-900 text-white rounded-3xl p-7 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div>
+              <span className="text-[19px] font-black text-amber-300 block mb-1">
+                교실 손들기 · 실시간 투표 ({totalVotes}명 참여 중)
+              </span>
+              <h3 className="text-[30px] xl:text-[34px] font-black text-white leading-snug">
+                &ldquo;여러분은 30살이 되었을 때 한 달에 얼마를 벌고 싶나요?&rdquo;
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveStep('step2')}
+              className="min-h-[64px] px-7 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[22px] rounded-2xl flex items-center gap-2.5 cursor-pointer shrink-0 active:scale-95"
             >
-              {/* Top: Label and Counter controls */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                    선택지
-                  </span>
-                  <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
-                    {opt.label}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={(e) => decrementVote(opt.id, e)}
-                    disabled={opt.votes <= 0}
-                    aria-label={`${opt.label} 표 차감`}
-                    className="p-1 rounded-lg text-slate-500 hover:bg-white hover:text-slate-900 disabled:opacity-30 transition-colors"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => incrementVote(opt.id)}
-                    aria-label={`${opt.label} 표 증가`}
-                    className="p-1 rounded-lg text-blue-600 hover:bg-white hover:text-blue-800 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Center: Vote count and Bar Graph */}
-              <div className="my-6 space-y-3">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-4xl sm:text-5xl font-black text-slate-900 font-mono tracking-tight tabular-nums">
-                    {opt.votes}
-                    <span className="text-base font-normal text-slate-500 ml-1">명</span>
-                  </span>
-                  <span className="text-lg font-bold text-blue-600 font-mono">
-                    {percentage}%
-                  </span>
-                </div>
-
-                {/* Vertical Bar gauge */}
-                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500"
-                    style={{ width: `${percentage}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Bottom Touch hint */}
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                <span className="flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5" />
-                  터치하여 투표 추가
-                </span>
-                <span className="font-semibold text-blue-600 group-hover:underline">
-                  +1표
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Bottom Action: Net Salary vs Gross Salary Difference */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-amber-400 text-slate-950 font-black text-xs rounded-full uppercase tracking-wider">
-                핵심 질문
-              </span>
-              <span className="text-slate-300 text-sm font-medium">
-                총 {totalVotes}명의 응답 집계됨
-              </span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-bold text-white">
-              "월급 300만 원이면, 실제 통장에도 300만 원이 다 들어올까요?"
-            </h3>
-            <p className="text-slate-300 text-sm sm:text-base">
-              세금과 4대 사회보험료가 공제된 실제 '실수령액'을 확인해 보세요.
-            </p>
+              <span>실수령액 확인하기</span>
+              <ArrowRight className="w-6 h-6" />
+            </button>
           </div>
 
-          <button
-            onClick={() => setShowDeductionModal(!showDeductionModal)}
-            className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-          >
-            <span>세전 월급 vs 실수령액 차이 알아보기</span>
-            {showDeductionModal ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-          </button>
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 flex-1">
+            {options.map((opt) => {
+              const percentage = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
+              return (
+                <div
+                  key={opt.id}
+                  className="bg-white border-2 border-slate-200 rounded-3xl p-6 flex flex-col justify-between gap-5 shadow-xs"
+                >
+                  <div>
+                    <span className="text-[18px] font-bold text-slate-500 block">희망 월급</span>
+                    <h4 className="text-[30px] xl:text-[34px] font-black text-slate-900 mt-1">
+                      {opt.label}
+                    </h4>
+                  </div>
 
-        {/* Expandable Breakdown Drawer */}
-        {showDeductionModal && (
-          <div className="mt-6 pt-6 border-t border-slate-800 animate-fade-in space-y-6">
-            {/* Quick Gross Selector */}
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-slate-400 text-sm font-semibold">예시 월급 선택:</span>
+                  <div className="space-y-4">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-[40px] xl:text-[44px] font-black text-slate-900 font-mono tabular-nums">
+                        {opt.votes}
+                        <span className="text-[22px] font-bold text-slate-500 ml-1">명</span>
+                      </span>
+                      <span className="text-[26px] font-black text-blue-700 font-mono tabular-nums">
+                        {percentage}%
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-100 h-5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => decrementVote(opt.id)}
+                      disabled={opt.votes <= 0}
+                      aria-label={`${opt.label} 표 차감`}
+                      className="min-h-[56px] rounded-2xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-800 font-black text-[22px] flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <Minus className="w-5 h-5" />
+                      <span>-1</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => incrementVote(opt.id)}
+                      aria-label={`${opt.label} 표 추가`}
+                      className="min-h-[56px] rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-[22px] flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span>+1</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl px-6 py-4 flex items-center justify-between gap-4">
+            <span className="text-[22px] xl:text-[24px] font-black text-slate-900 flex items-center gap-3">
+              <Users className="w-7 h-7 text-blue-700 shrink-0" />
+              핵심 질문: &ldquo;월급 300만 원이면 실제 내 통장에도 300만 원이 다 들어올까요?&rdquo;
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ================= STEP 2. 세전 vs 실수령액 비교 ================= */}
+      {activeStep === 'step2' && (
+        <div className="flex-1 flex flex-col justify-between gap-6">
+          {/* Gross Salary Selector */}
+          <div className="bg-white rounded-3xl p-6 border-2 border-slate-200 flex flex-wrap items-center justify-between gap-4">
+            <span className="text-[26px] font-black text-slate-900">
+              계약서상 월급(세전) 선택하기
+            </span>
+            <div className="flex flex-wrap gap-3">
               {[2500000, 3000000, 4000000, 5000000].map((amt) => (
                 <button
                   key={amt}
+                  type="button"
                   onClick={() => setSelectedGrossSalary(amt)}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                  className={`min-h-[60px] px-6 py-3 rounded-2xl text-[22px] font-black cursor-pointer transition-all tabular-nums ${
                     selectedGrossSalary === amt
-                      ? 'bg-amber-400 text-slate-950 shadow-md'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                      ? 'bg-slate-900 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                   }`}
                 >
                   세전 {formatWon(amt)}
                 </button>
               ))}
             </div>
-
-            {/* Net Salary Comparison Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Gross */}
-              <div className="bg-slate-800/80 rounded-2xl p-5 border border-slate-700 flex flex-col justify-between">
-                <span className="text-slate-400 text-xs font-bold uppercase">
-                  계약서상 월급 (세전)
-                </span>
-                <span className="text-3xl sm:text-4xl font-extrabold text-white font-mono my-2 tabular-nums">
-                  {formatWon(salaryBreakdown.grossWon)}
-                </span>
-                <span className="text-xs text-slate-400">
-                  회사와 계약한 연봉 ÷ 12개월 기준
-                </span>
-              </div>
-
-              {/* Deductions */}
-              <div className="bg-rose-950/40 rounded-2xl p-5 border border-rose-800/60 flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-rose-300 text-xs font-bold uppercase">
-                    원천징수 공제액 합계
-                  </span>
-                  <span className="text-xs font-bold text-rose-400 bg-rose-900/60 px-2 py-0.5 rounded-md">
-                    -{salaryBreakdown.deductionRate}%
-                  </span>
-                </div>
-                <span className="text-3xl sm:text-4xl font-extrabold text-rose-300 font-mono my-2 tabular-nums">
-                  -{formatWon(salaryBreakdown.totalDeductions)}
-                </span>
-                <span className="text-xs text-rose-300/80">
-                  4대 사회보험료 + 근로소득세 등
-                </span>
-              </div>
-
-              {/* Net Take-home */}
-              <div className="bg-emerald-950/40 rounded-2xl p-5 border border-emerald-500/60 flex flex-col justify-between shadow-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-emerald-300 text-xs font-bold uppercase">
-                    실제 내 통장 입금액 (실수령액)
-                  </span>
-                  <span className="text-xs font-bold text-emerald-300 bg-emerald-900/60 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    입금 완료
-                  </span>
-                </div>
-                <span className="text-3xl sm:text-4xl font-extrabold text-emerald-400 font-mono my-2 tabular-nums">
-                  약 {formatWon(salaryBreakdown.netWon)}
-                </span>
-                <span className="text-xs text-emerald-300/80">
-                  실제 내가 사용할 수 있는 한 달 소득!
-                </span>
-              </div>
-            </div>
-
-            {/* Detailed Deduction Items Pill Box */}
-            <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/80">
-              <div className="text-xs font-bold text-slate-300 mb-3 flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-amber-400" />
-                <span>공제 내역 상세 (세전 {formatWon(salaryBreakdown.grossWon)} 기준):</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs">
-                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                  <div className="text-slate-400">국민연금 (4.5%)</div>
-                  <div className="text-white font-mono font-bold mt-1">
-                    {salaryBreakdown.nationalPension.toLocaleString()}원
-                  </div>
-                </div>
-                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                  <div className="text-slate-400">건강보험 (3.545%)</div>
-                  <div className="text-white font-mono font-bold mt-1">
-                    {salaryBreakdown.healthInsurance.toLocaleString()}원
-                  </div>
-                </div>
-                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                  <div className="text-slate-400">장기요양보험</div>
-                  <div className="text-white font-mono font-bold mt-1">
-                    {salaryBreakdown.longTermCare.toLocaleString()}원
-                  </div>
-                </div>
-                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                  <div className="text-slate-400">고용보험 (0.9%)</div>
-                  <div className="text-white font-mono font-bold mt-1">
-                    {salaryBreakdown.employmentInsurance.toLocaleString()}원
-                  </div>
-                </div>
-                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                  <div className="text-slate-400">근로소득세</div>
-                  <div className="text-white font-mono font-bold mt-1">
-                    {salaryBreakdown.incomeTax.toLocaleString()}원
-                  </div>
-                </div>
-                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                  <div className="text-slate-400">지방소득세 (10%)</div>
-                  <div className="text-white font-mono font-bold mt-1">
-                    {salaryBreakdown.localIncomeTax.toLocaleString()}원
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Educational Disclaimer */}
-            <p className="text-xs text-slate-400 text-center">
-              ※ 위 실수령액은 1인 단신 근로자 기준 교육용 예시이며, 실제 공제액은 개인의 비과세 수당(식대 등), 부양가족 수 등에 따라 다소 차이가 있을 수 있습니다.
-            </p>
           </div>
-        )}
-      </div>
+
+          {/* 3 Giant Comparison Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-3xl p-7 border-2 border-slate-200 flex flex-col justify-between gap-3">
+              <span className="text-[22px] font-black text-slate-600">
+                ① 계약서상 월급 (세전)
+              </span>
+              <span className="text-[40px] xl:text-[46px] font-black text-slate-900 font-mono tabular-nums">
+                {formatWon(salaryBreakdown.grossWon)}
+              </span>
+              <span className="text-[20px] font-bold text-slate-600">
+                연봉 ÷ 12개월 계약 기준 금액
+              </span>
+            </div>
+
+            <div className="bg-rose-50 rounded-3xl p-7 border-2 border-rose-300 flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[22px] font-black text-rose-900">
+                  ② 원천징수 공제 합계
+                </span>
+                <span className="px-3.5 py-1 rounded-xl bg-rose-200 text-rose-950 font-black text-[20px] font-mono tabular-nums">
+                  -{salaryBreakdown.deductionRate}%
+                </span>
+              </div>
+              <span className="text-[40px] xl:text-[46px] font-black text-rose-700 font-mono tabular-nums">
+                -{formatWon(salaryBreakdown.totalDeductions)}
+              </span>
+              <span className="text-[20px] font-bold text-rose-800">
+                4대 사회보험료 + 근로·지방소득세
+              </span>
+            </div>
+
+            <div className="bg-emerald-950 text-white rounded-3xl p-7 border-2 border-emerald-500 flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[22px] font-black text-emerald-300">
+                  ③ 실제 통장 입금액 (실수령액)
+                </span>
+                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+              </div>
+              <span className="text-[40px] xl:text-[46px] font-black text-emerald-300 font-mono tabular-nums">
+                약 {formatWon(salaryBreakdown.netWon)}
+              </span>
+              <span className="text-[20px] font-bold text-emerald-100">
+                실제 내가 한 달 동안 쓸 수 있는 돈!
+              </span>
+            </div>
+          </div>
+
+          {/* 6 Detailed Deductions */}
+          <div className="bg-slate-900 text-white rounded-3xl p-7 space-y-4">
+            <div className="flex items-center gap-2.5 text-[22px] font-black text-amber-300">
+              <Info className="w-6 h-6 shrink-0" />
+              <span>월급에서 자동으로 빠져나가는 6가지 공제 항목 상세 (1인 근로자 예시)</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {[
+                { name: '국민연금 (4.5%)', val: salaryBreakdown.nationalPension },
+                { name: '건강보험 (3.545%)', val: salaryBreakdown.healthInsurance },
+                { name: '장기요양보험', val: salaryBreakdown.longTermCare },
+                { name: '고용보험 (0.9%)', val: salaryBreakdown.employmentInsurance },
+                { name: '근로소득세', val: salaryBreakdown.incomeTax },
+                { name: '지방소득세 (10%)', val: salaryBreakdown.localIncomeTax },
+              ].map((item) => (
+                <div
+                  key={item.name}
+                  className="bg-slate-800 rounded-2xl p-4 border border-slate-700 flex flex-col justify-between gap-1.5"
+                >
+                  <span className="text-[19px] font-bold text-slate-300">{item.name}</span>
+                  <span className="text-[26px] font-mono font-black text-white tabular-nums">
+                    {item.val.toLocaleString()}원
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

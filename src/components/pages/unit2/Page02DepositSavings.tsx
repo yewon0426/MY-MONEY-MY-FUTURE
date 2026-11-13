@@ -1,4 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+  Wallet,
+  PiggyBank,
+  ShieldCheck,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownLeft,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 import {
   calculateSimpleInterest,
   calculateCompoundInterest,
@@ -6,944 +16,905 @@ import {
   compareDepositAndSavings,
   calculateDemandDepositInterest,
   formatWon,
-  formatManWon,
 } from '../../../utils/finance';
-import {
-  PiggyBank,
-  TrendingUp,
-  ShieldCheck,
-  Calculator,
-  ArrowRight,
-  Sparkles,
-  RotateCcw,
-  PlusCircle,
-  MinusCircle,
-  History,
-  Scale,
-  CheckCircle2,
-  AlertCircle,
-  Building2,
-  HelpCircle,
-} from 'lucide-react';
 
 interface Page02Props {
   resetSignal: number;
 }
 
-interface TransactionLog {
-  id: number;
-  type: 'deposit' | 'withdraw';
-  amountWon: number;
-  balanceWon: number;
-  description: string;
-  timeText: string;
-}
+type StepKey = 'step1' | 'step2' | 'step3' | 'step4';
+
+const SITUATIONS = [
+  {
+    id: 1,
+    question: '다음 주 친구들과 떠날 여행 경비 50만 원을 언제든 꺼내 쓰려고 한다.',
+    answer: '보통예금' as const,
+    reason: '언제든 자유롭게 입금·출금할 수 있는 높은 유동성이 가장 중요합니다.',
+  },
+  {
+    id: 2,
+    question: '부모님께 물려받은 목돈 1,000만 원을 2년 동안 안전하게 묶어 이자를 받고 싶다.',
+    answer: '정기예금' as const,
+    reason: '이미 모은 목돈을 한 번에 거치하여 약정된 금리를 받는 정기예금이 유리합니다.',
+  },
+  {
+    id: 3,
+    question: '매달 알바비에서 30만 원씩 1년 동안 꾸준히 모아 졸업 여행 자금을 만들고 싶다.',
+    answer: '정기적금' as const,
+    reason: '매월 일정한 금액을 규칙적으로 납입해 목돈을 만들어가는 상품은 정기적금입니다.',
+  },
+];
 
 export const Page02DepositSavings: React.FC<Page02Props> = ({ resetSignal }) => {
-  // Main simulator mode: demand (보통예금), time (정기예금), installment (정기적금), compare (정기예금 vs 정기적금)
-  const [activeTab, setActiveTab] = useState<'demand' | 'time' | 'installment' | 'compare'>('demand');
+  const [activeStep, setActiveStep] = useState<StepKey>('step1');
 
-  // --- A. 보통예금 State ---
-  const [demandBalance, setDemandBalance] = useState<number>(1000000); // 초기 잔액 100만 원
-  const [demandRate, setDemandRate] = useState<number>(0.5); // 연 0.5%
-  const [demandDays, setDemandDays] = useState<number>(30); // 30일 거치 기준
-  const [transactions, setTransactions] = useState<TransactionLog[]>([
-    {
-      id: 1,
-      type: 'deposit',
-      amountWon: 1000000,
-      balanceWon: 1000000,
-      description: '초기 급여/용돈 입금',
-      timeText: '09:00',
-    },
-  ]);
-  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  // STEP 1: 보통예금
+  const [demandBalance, setDemandBalance] = useState<number>(1000000);
+  const [demandLog, setDemandLog] = useState<string>('초기 잔액 100만 원 입금 완료');
 
-  // --- B. 정기예금 State ---
-  const [timePrincipalMan, setTimePrincipalMan] = useState<number>(100); // 100만 원
-  const [timeAnnualRate, setTimeAnnualRate] = useState<number>(5.0); // 5.0%
-  const [timeDurationYears, setTimeDurationYears] = useState<number>(1); // 1년
-  const [timeTaxMode, setTimeTaxMode] = useState<'preTax' | 'postTax'>('preTax');
+  // STEP 2: 정기예금 + 단리/복리
+  const [fdPrincipal, setFdPrincipal] = useState<number>(10000000);
+  const [fdRate, setFdRate] = useState<number>(4.0);
+  const [fdYears, setFdYears] = useState<number>(5);
+  const [fdViewMode, setFdViewMode] = useState<'calculator' | 'simpleVsCompound'>('calculator');
 
-  // --- C. 정기적금 State ---
-  const [instMonthlyMan, setInstMonthlyMan] = useState<number>(10); // 월 10만 원
-  const [instAnnualRate, setInstAnnualRate] = useState<number>(4.0); // 연 4.0%
-  const [instMonths, setInstMonths] = useState<number>(12); // 12개월
-  const [instTaxMode, setInstTaxMode] = useState<'preTax' | 'postTax'>('preTax');
+  // STEP 3: 정기적금 + 예금/적금 이자 차이
+  const [monthlyDeposit, setMonthlyDeposit] = useState<number>(100000);
+  const [savingsRate, setSavingsRate] = useState<number>(4.0);
+  const [savingsMonths, setSavingsMonths] = useState<number>(12);
+  const [savingsViewMode, setSavingsViewMode] = useState<'calculator' | 'whyLess'>('calculator');
 
-  // --- D. 비교 State ---
-  const [compareTotalMan, setCompareTotalMan] = useState<number>(120); // 총 120만 원
-  const [compareRate, setCompareRate] = useState<number>(4.0); // 연 4.0%
-  const [compareMonths, setCompareMonths] = useState<number>(12); // 12개월
+  // STEP 4: 상황 비교 & 1억 원 예금자보호 퀴즈
+  const [situationIndex, setSituationIndex] = useState<number>(0);
+  const [situationAnswers, setSituationAnswers] = useState<Record<number, string>>({});
+  const [protectionQuizChoice, setProtectionQuizChoice] = useState<number | null>(null);
 
-  // --- Bottom Protection & Quiz State ---
-  const [showProtectionInfo, setShowProtectionInfo] = useState<boolean>(false);
-  const [showSameBankQuiz, setShowSameBankQuiz] = useState<boolean>(false);
-
-  React.useEffect(() => {
-    setActiveTab('demand');
+  useEffect(() => {
+    setActiveStep('step1');
     setDemandBalance(1000000);
-    setDemandRate(0.5);
-    setDemandDays(30);
-    setTransactions([
-      {
-        id: 1,
-        type: 'deposit',
-        amountWon: 1000000,
-        balanceWon: 1000000,
-        description: '초기 급여/용돈 입금',
-        timeText: '09:00',
-      },
-    ]);
-    setWithdrawError(null);
-
-    setTimePrincipalMan(100);
-    setTimeAnnualRate(5.0);
-    setTimeDurationYears(1);
-    setTimeTaxMode('preTax');
-
-    setInstMonthlyMan(10);
-    setInstAnnualRate(4.0);
-    setInstMonths(12);
-    setInstTaxMode('preTax');
-
-    setCompareTotalMan(120);
-    setCompareRate(4.0);
-    setCompareMonths(12);
-
-    setShowProtectionInfo(false);
-    setShowSameBankQuiz(false);
+    setDemandLog('초기 잔액 100만 원 입금 완료');
+    setFdPrincipal(10000000);
+    setFdRate(4.0);
+    setFdYears(5);
+    setFdViewMode('calculator');
+    setMonthlyDeposit(100000);
+    setSavingsRate(4.0);
+    setSavingsMonths(12);
+    setSavingsViewMode('calculator');
+    setSituationIndex(0);
+    setSituationAnswers({});
+    setProtectionQuizChoice(null);
   }, [resetSignal]);
 
-  // A. 보통예금 입출금 핸들러
-  const handleDeposit = (amountWon: number, desc: string) => {
-    const newBalance = demandBalance + amountWon;
-    setDemandBalance(newBalance);
-    setWithdrawError(null);
-    setTransactions((prev) => [
-      {
-        id: Date.now(),
-        type: 'deposit',
-        amountWon,
-        balanceWon: newBalance,
-        description: desc,
-        timeText: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      },
-      ...prev.slice(0, 9),
-    ]);
-  };
+  const demandInterest = calculateDemandDepositInterest(demandBalance, 0.5, 365);
+  const simpleRes = calculateSimpleInterest(fdPrincipal, fdRate, fdYears);
+  const compoundRes = calculateCompoundInterest(fdPrincipal, fdRate, fdYears);
 
-  const handleWithdraw = (amountWon: number, desc: string) => {
-    if (amountWon > demandBalance) {
-      setWithdrawError(`잔액 부족: 현재 잔액(${formatWon(demandBalance)})보다 큰 금액(${formatWon(amountWon)})은 출금할 수 없습니다!`);
-      return;
-    }
-    const newBalance = demandBalance - amountWon;
-    setDemandBalance(newBalance);
-    setWithdrawError(null);
-    setTransactions((prev) => [
-      {
-        id: Date.now(),
-        type: 'withdraw',
-        amountWon,
-        balanceWon: newBalance,
-        description: desc,
-        timeText: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      },
-      ...prev.slice(0, 9),
-    ]);
-  };
+  const installmentRes = calculateInstallmentSavings(monthlyDeposit, savingsRate, savingsMonths);
+  const compSameTotal = compareDepositAndSavings(monthlyDeposit * savingsMonths, savingsRate, savingsMonths);
 
-  // Calculations
-  const demandInterest = calculateDemandDepositInterest(demandBalance, demandRate, demandDays);
-  const timePrincipalWon = timePrincipalMan * 10000;
-  const simpleTimeResult = calculateSimpleInterest(timePrincipalWon, timeAnnualRate, timeDurationYears);
-  const compoundTimeResult = calculateCompoundInterest(timePrincipalWon, timeAnnualRate, timeDurationYears);
+  // SVG chart values for Simple vs Compound (up to maxYear = Math.max(fdYears, 5), show 5~10y clean)
+  const chartYears = fdYears <= 5 ? [1, 2, 3, 4, 5] : Array.from({ length: fdYears }, (_, i) => i + 1);
+  const maxChartVal = Math.max(
+    ...chartYears.map((y) => {
+      const row = compoundRes.yearlyBreakdown[y - 1];
+      return row ? row.compoundTotal : fdPrincipal;
+    }),
+    fdPrincipal * 1.2
+  );
+  const minChartVal = fdPrincipal * 0.9;
 
-  const instMonthlyWon = instMonthlyMan * 10000;
-  const instResult = calculateInstallmentSavings(instMonthlyWon, instAnnualRate, instMonths);
-
-  const compareResult = compareDepositAndSavings(compareTotalMan * 10000, compareRate, compareMonths);
+  const currentSituation = SITUATIONS[situationIndex];
+  const chosenForSituation = situationAnswers[currentSituation.id];
 
   return (
-    <div className="w-full h-full flex flex-col justify-between py-2.5 px-6 sm:px-8 max-w-[1700px] mx-auto animate-fade-in">
-      {/* Header */}
-      <div className="text-center space-y-0.5">
-        <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">
-          <PiggyBank className="w-3.5 h-3.5 text-blue-600" />
-          <span>UNIT 02 · 2차시 / 은행 예금의 본질과 분류</span>
+    <div className="flex-1 w-full max-w-[1720px] mx-auto px-8 xl:px-12 py-4 flex flex-col gap-5">
+      {/* Page Header & 4-STEP Tabs */}
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 border-b border-slate-200 pb-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 text-[20px] font-bold text-emerald-800">
+            <span>UNIT 02</span>
+            <span aria-hidden="true">·</span>
+            <span>PAGE 2</span>
+            <span aria-hidden="true">·</span>
+            <span>안전한 저축 자산의 원리</span>
+          </div>
+          <h2 className="text-[34px] xl:text-[40px] font-black text-slate-900 tracking-tight leading-tight mt-1 whitespace-nowrap">
+            예금과 적금 · 단리와 복리
+          </h2>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          "예금의 종류 — 요구불예금과 저축성예금"
-        </h2>
-        <p className="text-slate-600 text-xs sm:text-sm font-medium">
-          수시로 입출금하는 요구불예금과 이자를 목적으로 돈을 묶어두는 저축성예금의 구조를 체험해 봅시다.
-        </p>
+
+        <nav
+          aria-label="예금과 적금 학습 단계"
+          className="flex flex-wrap items-center gap-1.5 bg-slate-200/80 p-1.5 rounded-2xl shrink-0"
+        >
+          {[
+            { id: 'step1' as const, label: 'STEP 1. 보통예금' },
+            { id: 'step2' as const, label: 'STEP 2. 정기예금' },
+            { id: 'step3' as const, label: 'STEP 3. 정기적금' },
+            { id: 'step4' as const, label: 'STEP 4. 예금상품 비교' },
+          ].map((tab) => {
+            const isActive = activeStep === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveStep(tab.id)}
+                className={`min-h-[52px] px-3.5 py-2.5 rounded-xl text-[18px] font-black transition-all cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white/70 text-slate-700 hover:bg-white hover:text-slate-950'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* Visual Classification Hierarchy Tree Banner */}
-      <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-xs my-1">
-        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-2">
-          <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-            <Building2 className="w-4 h-4 text-blue-600" />
-            예금의 2대 분류 체계 (고1 교과서 표준)
-          </span>
-          <span className="text-[11px] text-slate-500 font-medium">
-            ※ 요구불예금도 소액 이자가 발생할 수 있으며, 실제 금리는 상품별로 다릅니다.
-          </span>
-        </div>
+      {/* ================= STEP 1. 보통예금 ================= */}
+      {activeStep === 'step1' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
+          <div className="lg:col-span-6 bg-white rounded-3xl p-8 border-2 border-slate-200 flex flex-col justify-between gap-6">
+            <div className="space-y-5">
+              <div className="flex items-center gap-3 text-blue-700">
+                <Wallet className="w-9 h-9 shrink-0" />
+                <h3 className="text-[30px] xl:text-[34px] font-black text-slate-900">
+                  보통예금이란? (요구불예금)
+                </h3>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-          {/* 1. 요구불예금 (Demand Deposit) */}
-          <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-2.5">
-            <div className="flex items-center justify-between">
-              <span className="font-black text-blue-900 text-sm">① 요구불예금 (Demand Deposit)</span>
-              <span className="px-2 py-0.5 bg-blue-200/80 text-blue-800 rounded text-[10px] font-bold">
-                언제든 자유 입출금
-              </span>
+              <p className="text-[24px] xl:text-[26px] font-semibold text-slate-800 leading-relaxed">
+                은행에 돈을 맡겨두고 <strong className="text-blue-700">원할 때 언제든지 입금·출금·송금</strong>할 수 있는 가장 기본적인 통장입니다.
+              </p>
+
+              <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200 space-y-3">
+                <h4 className="text-[26px] font-black text-blue-950">핵심 특징 3가지</h4>
+                <ul className="space-y-2.5 text-[24px] font-bold text-slate-800">
+                  <li>1. 유동성 최고 — 체크카드 결제, 계좌이체 즉시 가능</li>
+                  <li>2. 낮은 금리 — 보통 연 0.1% ~ 1.0% 내외의 적은 이자</li>
+                  <li>3. 실생활 예시 — 용돈 통장, 알바비 월급 통장, 비상금</li>
+                </ul>
+              </div>
             </div>
-            <p className="text-slate-600 text-[11px] mt-1 leading-relaxed">
-              예금자가 원할 때 언제든지 찾아 쓸 수 있는 결제성 예금입니다. (유동성 최고, 금리 연 0.1~1.0% 수준)
-            </p>
-            <div className="grid grid-cols-2 gap-1.5 mt-2">
-              <div className="bg-white p-1.5 rounded-lg border border-blue-100">
-                <strong className="text-blue-800 block text-[11px]">보통예금 (대표)</strong>
-                <span className="text-[10px] text-slate-500">월급 통장, 체크카드 결제, 계좌이체</span>
-              </div>
-              <div className="bg-white p-1.5 rounded-lg border border-blue-100">
-                <strong className="text-slate-800 block text-[11px]">당좌예금</strong>
-                <span className="text-[10px] text-slate-500">주로 사업자의 수표·어음 지급 결제</span>
-              </div>
+
+            <div className="bg-slate-100 rounded-2xl p-5 text-[24px] font-bold text-slate-800">
+              질문: &ldquo;내일 친구 생일 선물을 사야 할 돈은 정기적금과 보통예금 중 어디에 두어야 할까요?&rdquo;
             </div>
           </div>
 
-          {/* 2. 저축성예금 (Time & Savings Deposit) */}
-          <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-2.5">
-            <div className="flex items-center justify-between">
-              <span className="font-black text-emerald-900 text-sm">② 저축성예금 (Time Deposit)</span>
-              <span className="px-2 py-0.5 bg-emerald-200/80 text-emerald-800 rounded text-[10px] font-bold">
-                목돈 형성 및 이자 수익
-              </span>
-            </div>
-            <p className="text-slate-600 text-[11px] mt-1 leading-relaxed">
-              일정 기간 돈을 맡겨두고 약정된 높은 이자를 받는 목적이 강한 예금입니다. (중도 해지 시 약정금리 감소)
-            </p>
-            <div className="grid grid-cols-2 gap-1.5 mt-2">
-              <div className="bg-white p-1.5 rounded-lg border border-emerald-100">
-                <strong className="text-emerald-800 block text-[11px]">정기예금 (목돈 굴리기)</strong>
-                <span className="text-[10px] text-slate-500">목돈을 한 번에 맡겨두고 만기에 수령</span>
+          <div className="lg:col-span-6 bg-slate-900 text-white rounded-3xl p-8 flex flex-col justify-between gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[24px] font-black text-amber-300">보통예금 입출금 체험</span>
+                <span className="text-[22px] font-bold text-slate-300">적용 금리 연 0.5%</span>
               </div>
-              <div className="bg-white p-1.5 rounded-lg border border-emerald-100">
-                <strong className="text-indigo-800 block text-[11px]">정기적금 (목돈 만들기)</strong>
-                <span className="text-[10px] text-slate-500">매달 정해진 날에 일정액을 나누어 불입</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Simulator Mode Tabs */}
-      <div className="flex items-center justify-center gap-2 my-1">
-        <div className="bg-slate-200/80 p-1 rounded-2xl flex items-center gap-1 shadow-inner text-xs font-bold">
-          <button
-            onClick={() => setActiveTab('demand')}
-            className={`px-4 py-1.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'demand' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            ① 보통예금 (자유 입출금 실습)
-          </button>
-          <button
-            onClick={() => setActiveTab('time')}
-            className={`px-4 py-1.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'time' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            ② 정기예금 (목돈 굴리기)
-          </button>
-          <button
-            onClick={() => setActiveTab('installment')}
-            className={`px-4 py-1.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'installment' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            ③ 정기적금 (매달 모으기)
-          </button>
-          <button
-            onClick={() => setActiveTab('compare')}
-            className={`px-4 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-              activeTab === 'compare' ? 'bg-slate-900 text-amber-300 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Scale className="w-3.5 h-3.5 text-amber-400" />
-            <span>정기예금 vs 정기적금 비교</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Interactive Stage for Selected Simulator */}
-      <div className="flex-1 my-1">
-        {/* ================= TAB 1: 보통예금 시뮬레이터 ================= */}
-        {activeTab === 'demand' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full items-stretch">
-            {/* Left 6 cols: Operations (Deposit / Withdraw buttons) */}
-            <div className="lg:col-span-6 bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <History className="w-5 h-5 text-blue-600" />
-                    <span className="font-extrabold text-sm sm:text-base text-slate-900">
-                      보통예금 통장 조작기 (월급 통장 가상 체험)
-                    </span>
-                  </div>
-                  <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full">
-                    수시 입출금
-                  </span>
+              <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                <span className="text-[22px] font-bold text-slate-300 block">현재 통장 잔액</span>
+                <div className="text-[40px] xl:text-[48px] font-mono font-black text-emerald-400 tabular-nums mt-1">
+                  {formatWon(demandBalance)}
                 </div>
-
-                {/* Big Balance Card */}
-                <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-blue-200 font-bold block">현재 통장 잔액 (Current Balance)</span>
-                    <div className="text-3xl font-black font-mono mt-0.5">{formatWon(demandBalance)}</div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-blue-300 block">적용 금리 (교육용)</span>
-                    <span className="text-sm font-black text-amber-300 font-mono">연 {demandRate}%</span>
-                  </div>
-                </div>
-
-                {withdrawError && (
-                  <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold flex items-center gap-2 animate-shake">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{withdrawError}</span>
-                  </div>
-                )}
-
-                {/* Deposit Controls */}
-                <div>
-                  <span className="text-xs font-extrabold text-emerald-800 flex items-center gap-1 mb-1.5">
-                    <PlusCircle className="w-4 h-4 text-emerald-600" />
-                    <span>통장에 입금하기 (Deposit):</span>
-                  </span>
-                  <div className="grid grid-cols-4 gap-2">
-                    <button
-                      onClick={() => handleDeposit(50000, '알바비/용돈')}
-                      className="py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      +5만 원
-                    </button>
-                    <button
-                      onClick={() => handleDeposit(100000, '중고물품 판매')}
-                      className="py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      +10만 원
-                    </button>
-                    <button
-                      onClick={() => handleDeposit(300000, '성과급 보너스')}
-                      className="py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      +30만 원
-                    </button>
-                    <button
-                      onClick={() => handleDeposit(500000, '월급 수령 입금')}
-                      className="py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
-                    >
-                      +50만 원
-                    </button>
-                  </div>
-                </div>
-
-                {/* Withdraw Controls */}
-                <div>
-                  <span className="text-xs font-extrabold text-rose-800 flex items-center gap-1 mb-1.5">
-                    <MinusCircle className="w-4 h-4 text-rose-600" />
-                    <span>통장에서 출금/결제하기 (Withdraw):</span>
-                  </span>
-                  <div className="grid grid-cols-4 gap-2">
-                    <button
-                      onClick={() => handleWithdraw(30000, '편의점/식비 결제')}
-                      className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      -3만 원
-                    </button>
-                    <button
-                      onClick={() => handleWithdraw(100000, '친구 계좌이체/쇼핑')}
-                      className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      -10만 원
-                    </button>
-                    <button
-                      onClick={() => handleWithdraw(300000, '자취방 월세 이체')}
-                      className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      -30만 원
-                    </button>
-                    <button
-                      onClick={() => handleWithdraw(500000, '등록금/비상금 출금')}
-                      className="py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
-                    >
-                      -50만 원
-                    </button>
-                  </div>
+                <div className="mt-3 text-[22px] font-bold text-slate-300 tabular-nums">
+                  1년 유지 시 예상 세후 이자: {formatWon(demandInterest.postTaxInterest)}
                 </div>
               </div>
 
-              {/* Classroom Teaching Prompt */}
-              <div className="mt-3 p-3 bg-blue-50/80 rounded-2xl border border-blue-200 text-xs text-blue-950 space-y-1">
-                <strong className="text-blue-900 font-bold block flex items-center gap-1.5">
-                  <HelpCircle className="w-3.5 h-3.5 text-blue-600" />
-                  교사용 발문 질문:
-                </strong>
-                <p className="leading-relaxed">
-                  "왜 우리는 월급 통장이나 생활비 통장으로 정기예금이 아니라 <strong>보통예금</strong>을 사용할까요?"
-                </p>
-                <p className="text-[11px] text-slate-600">
-                  👉 <strong>정답:</strong> 편의점에서 결제하거나 친구에게 이체할 때 수시로 돈을 빼 쓸 수 있는 '유동성'이 가장 중요하기 때문입니다.
-                </p>
+              <div className="bg-slate-800/80 rounded-2xl p-4 border border-slate-700 text-[22px] font-bold text-amber-200">
+                최근 거래 기록: {demandLog}
               </div>
             </div>
 
-            {/* Right 6 cols: Live Transaction History & Interest Calc */}
-            <div className="lg:col-span-6 bg-slate-900 text-white rounded-3xl p-4 border-2 border-slate-800 shadow-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                  <span className="text-xs font-bold text-slate-300">실시간 통장 거래 내역 (최근 10건)</span>
-                  <span className="text-[10px] text-slate-400">총 {transactions.length}회 거래</span>
-                </div>
-
-                <div className="max-h-48 overflow-y-auto space-y-1.5 my-2.5 pr-1">
-                  {transactions.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className="p-2 bg-slate-800/80 rounded-xl border border-slate-700/80 flex items-center justify-between text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${tx.type === 'deposit' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                        <div>
-                          <span className="font-bold text-slate-200 block">{tx.description}</span>
-                          <span className="text-[10px] text-slate-400">{tx.timeText}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className={`font-mono font-bold ${tx.type === 'deposit' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {tx.type === 'deposit' ? '+' : '-'}{formatWon(tx.amountWon)}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block font-mono">잔액 {formatWon(tx.balanceWon)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Estimated Interest Info */}
-                <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 space-y-1 text-xs">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span>현재 잔액 기준 30일간 유지 시 예상 세전 이자:</span>
-                    <span className="text-amber-300 font-mono font-bold text-sm">+{formatWon(demandInterest.preTaxInterest)}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 leading-relaxed">
-                    ※ 교육용 단순 계산입니다. 실제 은행은 매일의 최종 잔액에 대해 일할 계산하여 정해진 결산일에 지급합니다.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
-                <span>보통예금 특징: 자유 입출금 보장</span>
-                <span className="text-blue-400 font-bold">수익성보다 유동성 중심</span>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setDemandBalance((b) => b + 500000);
+                  setDemandLog('알바비 +50만 원 자유 입금');
+                }}
+                className="min-h-[68px] px-5 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[24px] flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                <ArrowDownLeft className="w-7 h-7" />
+                <span>+50만 원 입금</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (demandBalance >= 200000) {
+                    setDemandBalance((b) => b - 200000);
+                    setDemandLog('생활비 -20만 원 즉시 출금');
+                  } else {
+                    setDemandLog('잔액이 부족해 20만 원을 출금할 수 없습니다.');
+                  }
+                }}
+                className="min-h-[68px] px-5 py-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-[24px] flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                <ArrowUpRight className="w-7 h-7" />
+                <span>-20만 원 출금</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDemandBalance((b) => b + 1000000);
+                  setDemandLog('용돈·상여금 +100만 원 입금');
+                }}
+                className="min-h-[64px] px-5 py-3 rounded-2xl bg-slate-700 hover:bg-slate-600 text-white font-black text-[22px] cursor-pointer active:scale-95"
+              >
+                +100만 원 입금
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDemandBalance(1000000);
+                  setDemandLog('잔액 100만 원으로 초기화');
+                }}
+                className="min-h-[64px] px-5 py-3 rounded-2xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-black text-[22px] cursor-pointer active:scale-95"
+              >
+                잔액 초기화
+              </button>
             </div>
-          </div>
-        )}
-
-        {/* ================= TAB 2: 정기예금 시뮬레이터 ================= */}
-        {activeTab === 'time' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full items-stretch">
-            {/* Left 6 cols: Parameters */}
-            <div className="lg:col-span-6 bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <Calculator className="w-5 h-5 text-indigo-600" />
-                    <span className="font-extrabold text-sm sm:text-base text-slate-900">
-                      정기예금 시뮬레이터 (목돈 일시 거치)
-                    </span>
-                  </div>
-                  <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
-                    <button
-                      onClick={() => setTimeTaxMode('preTax')}
-                      className={`px-2 py-0.5 rounded cursor-pointer ${timeTaxMode === 'preTax' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}
-                    >
-                      세전 이자
-                    </button>
-                    <button
-                      onClick={() => setTimeTaxMode('postTax')}
-                      className={`px-2 py-0.5 rounded cursor-pointer ${timeTaxMode === 'postTax' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500'}`}
-                    >
-                      세후 (15.4% 공제)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Principal */}
-                <div>
-                  <div className="flex items-center justify-between mb-1 text-xs font-bold">
-                    <span className="text-slate-600">예금 원금 (Principal):</span>
-                    <span className="text-indigo-700 font-mono text-base font-extrabold">{formatManWon(timePrincipalMan)}</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[100, 300, 500, 1000].map((amt) => (
-                      <button
-                        key={amt}
-                        onClick={() => setTimePrincipalMan(amt)}
-                        className={`py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          timePrincipalMan === amt ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        {amt}만 원
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Interest Rate */}
-                <div>
-                  <div className="flex items-center justify-between mb-1 text-xs font-bold">
-                    <span className="text-slate-600">연 금리 (Interest Rate):</span>
-                    <span className="text-amber-700 font-mono text-base font-extrabold">연 {timeAnnualRate.toFixed(1)}%</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[3.0, 4.0, 5.0, 7.0].map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setTimeAnnualRate(r)}
-                        className={`py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          timeAnnualRate === r ? 'bg-amber-400 text-slate-950 font-black shadow-md' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        연 {r}%
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Duration */}
-                <div>
-                  <div className="flex items-center justify-between mb-1 text-xs font-bold">
-                    <span className="text-slate-600">예치 기간 (Maturity Period):</span>
-                    <span className="text-emerald-700 font-mono text-base font-extrabold">{timeDurationYears}년 만기</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[1, 3, 5, 10].map((y) => (
-                      <button
-                        key={y}
-                        onClick={() => setTimeDurationYears(y)}
-                        className={`py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          timeDurationYears === y ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        {y}년
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-2 p-2.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600">
-                <strong className="text-slate-800 font-bold block mb-0.5">💡 단리 vs 복리 공식:</strong>
-                단리 = 원금 × 연이율 × 기간 / 연복리 = 원금 × (1 + 연이율)^기간
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  ※ 복리는 교육용 가정이며, 모든 정기예금이 복리로 지급되는 것은 아닙니다.
-                </span>
-              </div>
-            </div>
-
-            {/* Right 6 cols: Scorecards */}
-            <div className="lg:col-span-6 bg-slate-900 text-white rounded-3xl p-4 border-2 border-slate-800 shadow-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                  <span className="text-xs font-bold text-emerald-400">
-                    단리 vs 복리 수령액 ({timeDurationYears}년 후 만기)
-                  </span>
-                  <span className="text-[10px] text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded font-bold">
-                    {timeTaxMode === 'preTax' ? '세전' : '세후(15.4% 공제)'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 my-3">
-                  <div className="bg-slate-800/80 rounded-2xl p-3 border border-slate-700">
-                    <span className="text-[11px] text-slate-400 font-bold block">단리 (Simple Interest)</span>
-                    <div className="text-xl sm:text-2xl font-black text-white font-mono my-1">
-                      {formatWon(timeTaxMode === 'preTax' ? simpleTimeResult.totalPreTax : simpleTimeResult.totalPostTax)}
-                    </div>
-                    <span className="text-[11px] text-blue-400 font-semibold block">
-                      총 이자: +{formatWon(timeTaxMode === 'preTax' ? simpleTimeResult.preTaxInterest : simpleTimeResult.postTaxInterest)}
-                    </span>
-                  </div>
-
-                  <div className="bg-emerald-950/50 rounded-2xl p-3 border border-emerald-500/50">
-                    <span className="text-[11px] text-emerald-300 font-bold block">연복리 (Compound Interest)</span>
-                    <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono my-1">
-                      {formatWon(timeTaxMode === 'preTax' ? compoundTimeResult.totalPreTax : Math.floor(timePrincipalWon + compoundTimeResult.preTaxInterest * 0.846))}
-                    </div>
-                    <span className="text-[11px] text-emerald-300 font-semibold block">
-                      총 이자: +{formatWon(timeTaxMode === 'preTax' ? compoundTimeResult.preTaxInterest : Math.floor(compoundTimeResult.preTaxInterest * 0.846))}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-2.5 bg-slate-800/60 rounded-xl border border-slate-700 text-xs flex items-center justify-between">
-                  <span className="text-slate-300">{timeDurationYears}년 후 복리가 주는 추가 이익:</span>
-                  <span className="text-amber-400 font-bold font-mono">
-                    +{formatWon(compoundTimeResult.totalPreTax - simpleTimeResult.totalPreTax)} 차이
-                  </span>
-                </div>
-
-                <div className="mt-2.5 space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold block">연도별 복리 격차 추이:</span>
-                  <div className="grid grid-cols-5 gap-1 text-center text-[10px]">
-                    {compoundTimeResult.yearlyBreakdown.slice(0, 5).map((yd) => (
-                      <div key={yd.year} className="bg-slate-800 p-1.5 rounded-lg border border-slate-700">
-                        <span className="text-slate-400 block">{yd.year}년차</span>
-                        <span className="text-emerald-400 font-mono font-bold block mt-0.5">+{formatWon(yd.difference)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
-                <span>정기예금: 목돈 거치용 (중도 해지 시 약정이자 감소)</span>
-                <span className="text-emerald-400 font-bold">목돈 굴리기 최적</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================= TAB 3: 정기적금 시뮬레이터 ================= */}
-        {activeTab === 'installment' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full items-stretch">
-            {/* Left 6 cols: Installment Parameters */}
-            <div className="lg:col-span-6 bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <PiggyBank className="w-5 h-5 text-indigo-600" />
-                    <span className="font-extrabold text-sm sm:text-base text-slate-900">
-                      정기적금 시뮬레이터 (매달 일정액 납입)
-                    </span>
-                  </div>
-                  <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
-                    <button
-                      onClick={() => setInstTaxMode('preTax')}
-                      className={`px-2 py-0.5 rounded cursor-pointer ${instTaxMode === 'preTax' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}
-                    >
-                      세전
-                    </button>
-                    <button
-                      onClick={() => setInstTaxMode('postTax')}
-                      className={`px-2 py-0.5 rounded cursor-pointer ${instTaxMode === 'postTax' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500'}`}
-                    >
-                      세후 (15.4%)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Monthly Deposit */}
-                <div>
-                  <div className="flex items-center justify-between mb-1 text-xs font-bold">
-                    <span className="text-slate-600">월 납입액 (Monthly Deposit):</span>
-                    <span className="text-indigo-700 font-mono text-base font-extrabold">{formatManWon(instMonthlyMan)}</span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {[5, 10, 20, 30, 50].map((amt) => (
-                      <button
-                        key={amt}
-                        onClick={() => setInstMonthlyMan(amt)}
-                        className={`py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          instMonthlyMan === amt ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        {amt}만 원
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Annual Rate */}
-                <div>
-                  <div className="flex items-center justify-between mb-1 text-xs font-bold">
-                    <span className="text-slate-600">연 금리 (Interest Rate):</span>
-                    <span className="text-amber-700 font-mono text-base font-extrabold">연 {instAnnualRate.toFixed(1)}%</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[3.0, 4.0, 5.0, 7.0].map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setInstAnnualRate(r)}
-                        className={`py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          instAnnualRate === r ? 'bg-amber-400 text-slate-950 font-black shadow-md' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        연 {r}%
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Duration Months */}
-                <div>
-                  <div className="flex items-center justify-between mb-1 text-xs font-bold">
-                    <span className="text-slate-600">적립 기간 (Months):</span>
-                    <span className="text-blue-700 font-mono text-base font-extrabold">{instMonths}개월 만기</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[6, 12, 24, 36].map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => setInstMonths(m)}
-                        className={`py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          instMonths === m ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        {m}개월
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-2 p-2.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600">
-                <strong className="text-slate-800 font-bold block mb-0.5">💡 적금 이자 계산의 핵심:</strong>
-                첫 달에 넣은 돈은 {instMonths}개월간 머물지만, 마지막 달에 넣은 돈은 1개월만 머뭅니다.
-                <span className="text-[10px] text-slate-500 block mt-0.5">
-                  따라서 모든 원금에 전체 기간 이자가 붙는 것이 아니라, 입금 시기별 잔여 기간만큼만 이자가 붙습니다.
-                </span>
-              </div>
-            </div>
-
-            {/* Right 6 cols: Installment Result Dashboard */}
-            <div className="lg:col-span-6 bg-slate-900 text-white rounded-3xl p-4 border-2 border-slate-800 shadow-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                  <span className="text-xs font-bold text-slate-300">
-                    만기 수령액 분석 (월 {formatManWon(instMonthlyMan)} × {instMonths}개월)
-                  </span>
-                  <span className="text-[10px] text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded font-bold">
-                    연 {instAnnualRate}% 단리
-                  </span>
-                </div>
-
-                {/* Big Result Display */}
-                <div className="my-3 p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-slate-400 font-bold block">총 만기 수령액 (원금 + 이자)</span>
-                    <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono mt-0.5">
-                      {formatWon(instTaxMode === 'preTax' ? instResult.totalPreTax : instResult.totalPostTax)}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs text-slate-400 font-bold block">순수 이자 수익</span>
-                    <div className="text-lg font-black text-amber-300 font-mono mt-0.5">
-                      +{formatWon(instTaxMode === 'preTax' ? instResult.preTaxInterest : instResult.postTaxInterest)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-slate-800 p-2.5 rounded-xl border border-slate-700">
-                    <span className="text-slate-400 block text-[11px]">총 납입 원금</span>
-                    <span className="text-base font-mono font-bold text-white mt-0.5 block">
-                      {formatWon(instResult.totalPrincipalWon)}
-                    </span>
-                    <span className="text-[10px] text-slate-500">{instMonthlyMan}만 원 × {instMonths}회</span>
-                  </div>
-                  <div className="bg-slate-800 p-2.5 rounded-xl border border-slate-700">
-                    <span className="text-slate-400 block text-[11px]">세금 (15.4% 원천징수)</span>
-                    <span className="text-base font-mono font-bold text-rose-300 mt-0.5 block">
-                      -{formatWon(instResult.interestTax)}
-                    </span>
-                    <span className="text-[10px] text-slate-500">이자소득세+지방소득세</span>
-                  </div>
-                </div>
-
-                {/* Progress Visual: Monthly Cumulative Principal */}
-                <div className="mt-3 space-y-1">
-                  <div className="flex justify-between text-[11px] text-slate-300">
-                    <span>월별 원금 적립 누적 과정 ({instMonths}개월 완료 시):</span>
-                    <span className="text-emerald-400 font-mono font-bold">{formatWon(instResult.totalPrincipalWon)} 목표 달성!</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full w-full" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
-                <span>정기적금: 종잣돈(목돈) 만들기 첫걸음</span>
-                <span className="text-indigo-400 font-bold">사회초년생 필수 저축</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================= TAB 4: 정기예금 vs 정기적금 비교하기 ================= */}
-        {activeTab === 'compare' && (
-          <div className="bg-slate-900 text-white rounded-3xl p-5 border-2 border-slate-800 shadow-xl h-full flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                <div className="flex items-center gap-2">
-                  <Scale className="w-5 h-5 text-amber-400" />
-                  <span className="font-extrabold text-base text-white">
-                    정기예금 vs 정기적금 이자 차이 끝장 비교
-                  </span>
-                </div>
-                <span className="text-xs font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
-                  동일한 총원금 {formatWon(compareResult.totalPrincipalWon)} · 연 {compareRate}% · {compareMonths}개월 기준
-                </span>
-              </div>
-
-              {/* Side by Side Comparison Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-3">
-                {/* Fixed Deposit Card */}
-                <div className="bg-slate-800/90 rounded-2xl p-4 border-2 border-emerald-500/70 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 bg-emerald-500 text-slate-950 font-black text-xs rounded">
-                      정기예금 (Fixed Deposit)
-                    </span>
-                    <span className="text-xs text-emerald-300 font-bold">목돈 한 번에 예치</span>
-                  </div>
-                  <p className="text-xs text-slate-300">
-                    처음에 <strong>{formatWon(compareResult.totalPrincipalWon)}</strong>을 한 번에 넣고 {compareMonths}개월간 그대로 묶어둠.
-                  </p>
-                  <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
-                    <span className="text-xs text-slate-400 block">세전 이자:</span>
-                    <div className="text-2xl font-black text-emerald-400 font-mono">
-                      +{formatWon(compareResult.fixedDeposit.preTaxInterest)}
-                    </div>
-                    <span className="text-[11px] text-slate-400">
-                      계산: {formatWon(compareResult.totalPrincipalWon)} × {compareRate}% × ({compareMonths}/12)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Installment Savings Card */}
-                <div className="bg-slate-800/90 rounded-2xl p-4 border-2 border-indigo-500/70 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 bg-indigo-500 text-white font-black text-xs rounded">
-                      정기적금 (Installment Savings)
-                    </span>
-                    <span className="text-xs text-indigo-300 font-bold">매달 나누어 납입</span>
-                  </div>
-                  <p className="text-xs text-slate-300">
-                    매달 <strong>{formatWon(compareResult.installmentSavings.monthlyDepositWon)}</strong>씩 {compareMonths}번에 걸쳐 나누어 넣음.
-                  </p>
-                  <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
-                    <span className="text-xs text-slate-400 block">세전 이자:</span>
-                    <div className="text-2xl font-black text-indigo-300 font-mono">
-                      +{formatWon(compareResult.installmentSavings.preTaxInterest)}
-                    </div>
-                    <span className="text-[11px] text-slate-400">
-                      계산: 매월 입금액마다 잔여 기간별 단리 적용
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Difference Banner */}
-              <div className="p-3 bg-amber-400/20 border border-amber-400/50 rounded-2xl flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="text-amber-200 font-medium">
-                    {compareResult.explanation}
-                  </span>
-                </div>
-                <span className="text-amber-300 font-black font-mono text-sm shrink-0">
-                  예금 이자가 +{formatWon(compareResult.interestDifference)} 더 많음!
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
-              <span>교사용 지도 팁: 이미 모은 목돈은 정기예금, 앞으로 모을 돈은 정기적금</span>
-              <span className="text-amber-400 font-bold">자금의 보유 시점 차이</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 예금자보호제도 1억 원 상향 수정 배너 (2025.09.01 개정 반영) */}
-      <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shrink-0">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded">
-                2025년 9월 1일 개정 시행
-              </span>
-              <span className="text-xs font-bold text-emerald-900">
-                예금자보호한도 상향: 금융회사별 1인당 <strong>최고 1억 원(원금+소정 이자)</strong>까지 보호
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-600 mt-0.5">
-              은행이 부도나더라도 예금보험공사가 동일 금융회사 내 모든 보호 대상 예금을 합산하여 최대 1억 원까지 지급합니다.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setShowSameBankQuiz(!showSameBankQuiz)}
-            className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition-all cursor-pointer shadow-xs"
-          >
-            {showSameBankQuiz ? '퀴즈 닫기 ▲' : '교실 퀴즈: 같은 은행에 1.2억 있으면? ▼'}
-          </button>
-          <button
-            onClick={() => setShowProtectionInfo(!showProtectionInfo)}
-            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
-          >
-            {showProtectionInfo ? '안내 닫기' : '보호 대상 안내'}
-          </button>
-        </div>
-      </div>
-
-      {/* Same Bank 1.2 Billion Won Quiz Modal / Toast */}
-      {showSameBankQuiz && (
-        <div className="bg-white border-2 border-amber-300 rounded-2xl p-3.5 text-xs text-slate-800 space-y-1.5 shadow-lg animate-fade-in">
-          <strong className="text-amber-900 font-extrabold text-sm block flex items-center gap-1.5">
-            <HelpCircle className="w-4 h-4 text-amber-600" />
-            학생 참여 퀴즈: "같은 은행에 정기예금 7,000만 원과 적금 5,000만 원이 있다면 전부 보호될까요?"
-          </strong>
-          <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-slate-700 space-y-1">
-            <p>
-              👉 <strong>정답:</strong> 아닙니다! 같은 금융회사 내 여러 예금은 원금과 이자를 <strong>모두 합산하여 1인당 최대 1억 원까지만</strong> 보호됩니다.
-            </p>
-            <p className="text-[11px] text-slate-600">
-              따라서 총 1억 2,000만 원 중 1억 원은 안전하게 돌려받지만, 초과된 2,000만 원은 전액 보호받지 못할 수 있습니다. 1억 원이 넘는 자산은 <strong>서로 다른 은행(A은행 1억, B은행 1억)에 분산 예치</strong>해야 각각 1억 원씩 완벽하게 보호받을 수 있습니다!
-            </p>
           </div>
         </div>
       )}
 
-      {/* Protection Scope Info */}
-      {showProtectionInfo && (
-        <div className="bg-white border border-emerald-300 rounded-2xl p-3 text-xs text-slate-700 grid grid-cols-1 md:grid-cols-2 gap-3 animate-fade-in shadow-md">
-          <div className="bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100">
-            <strong className="text-emerald-900 font-bold block mb-1">
-              ✅ 예금자보호 대상 상품 (원금+이자 1억 원 한도)
-            </strong>
-            <p className="leading-relaxed text-[11px]">
-              은행의 보통예금, 정기예금, 정기적금, 개인퇴직연금(IRP 등 일부). 은행 파산 시 예금보험공사가 1인당 최고 1억 원까지 지급합니다.
-            </p>
+      {/* ================= STEP 2. 정기예금 + 단리 vs 복리 ================= */}
+      {activeStep === 'step2' && (
+        <div className="flex-1 flex flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-3xl border-2 border-slate-200">
+            <div>
+              <h3 className="text-[30px] xl:text-[34px] font-black text-slate-900">
+                정기예금: 목돈을 한 번에 맡기고 약정 이자 받기
+              </h3>
+              <p className="text-[22px] font-bold text-slate-600 mt-1">
+                목돈을 정해진 만기까지 거치하면 보통예금보다 높은 금리를 제공합니다.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setFdViewMode('calculator')}
+                className={`min-h-[56px] px-6 py-2.5 rounded-xl text-[22px] font-black cursor-pointer ${
+                  fdViewMode === 'calculator' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:text-slate-950'
+                }`}
+              >
+                목돈 예치 계산기
+              </button>
+              <button
+                type="button"
+                onClick={() => setFdViewMode('simpleVsCompound')}
+                className={`min-h-[56px] px-6 py-2.5 rounded-xl text-[22px] font-black cursor-pointer ${
+                  fdViewMode === 'simpleVsCompound' ? 'bg-indigo-600 text-white' : 'text-slate-700 hover:text-slate-950'
+                }`}
+              >
+                단리 vs 복리 그래프 비교
+              </button>
+            </div>
           </div>
-          <div className="bg-rose-50/50 p-2.5 rounded-xl border border-rose-100">
-            <strong className="text-rose-900 font-bold block mb-1">
-              ❌ 예금자보호 비대상 상품 (보호 불가)
-            </strong>
-            <p className="leading-relaxed text-[11px]">
-              주식, 일반 펀드, ETF, 채권, 수익증권 등. 투자성 상품은 시장 가격 변동에 따른 손실 위험을 투자자가 직접 부담하므로 보호되지 않습니다.
-            </p>
+
+          {fdViewMode === 'calculator' ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
+              <div className="lg:col-span-6 bg-white rounded-3xl p-8 border-2 border-slate-200 flex flex-col justify-between gap-6">
+                <h4 className="text-[28px] font-black text-slate-900">정기예금 조건 설정</h4>
+
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between text-[24px] font-black text-slate-800 mb-3">
+                      <span>예치 원금 (목돈)</span>
+                      <span className="font-mono text-blue-700 tabular-nums">{formatWon(fdPrincipal)}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[1000000, 5000000, 10000000, 30000000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setFdPrincipal(amt)}
+                          className={`min-h-[56px] rounded-xl font-black text-[22px] cursor-pointer ${
+                            fdPrincipal === amt ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                          }`}
+                        >
+                          {formatWon(amt)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[24px] font-black text-slate-800 mb-3">
+                      <span>연 이자율 (금리)</span>
+                      <span className="font-mono text-emerald-700 tabular-nums">연 {fdRate.toFixed(1)}%</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[3.0, 4.0, 5.0, 7.0].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setFdRate(r)}
+                          className={`min-h-[56px] rounded-xl font-black text-[22px] cursor-pointer tabular-nums ${
+                            fdRate === r ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                          }`}
+                        >
+                          {r.toFixed(1)}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[24px] font-black text-slate-800 mb-3">
+                      <span>예치 기간 (만기)</span>
+                      <span className="font-mono text-indigo-700 tabular-nums">{fdYears}년</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[1, 3, 5, 10].map((y) => (
+                        <button
+                          key={y}
+                          type="button"
+                          onClick={() => setFdYears(y)}
+                          className={`min-h-[56px] rounded-xl font-black text-[22px] cursor-pointer tabular-nums ${
+                            fdYears === y ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                          }`}
+                        >
+                          {y}년
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-6 bg-slate-900 text-white rounded-3xl p-8 flex flex-col justify-between gap-6">
+                <h4 className="text-[28px] font-black text-amber-300">만기 수령 결과 ({fdYears}년 기준)</h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+                    <span className="text-[22px] font-bold text-slate-300 block">단리 세전 이자</span>
+                    <span className="text-[36px] xl:text-[40px] font-mono font-black text-blue-400 tabular-nums block mt-1">
+                      +{formatWon(simpleRes.preTaxInterest)}
+                    </span>
+                    <span className="text-[20px] text-slate-400 font-bold block mt-1 tabular-nums">
+                      이자소득세 15.4% 제외 세후 +{formatWon(simpleRes.postTaxInterest)}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+                    <span className="text-[22px] font-bold text-slate-300 block">복리 세전 이자</span>
+                    <span className="text-[36px] xl:text-[40px] font-mono font-black text-emerald-400 tabular-nums block mt-1">
+                      +{formatWon(compoundRes.preTaxInterest)}
+                    </span>
+                    <span className="text-[20px] text-emerald-300 font-bold block mt-1 tabular-nums">
+                      단리 대비 +{formatWon(compoundRes.preTaxInterest - simpleRes.preTaxInterest)} 추가
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-950/70 border-2 border-emerald-500 rounded-2xl p-6 flex items-center justify-between">
+                  <div>
+                    <span className="text-[22px] font-bold text-emerald-200 block">단리 세후 최종 수령액</span>
+                    <span className="text-[40px] xl:text-[46px] font-mono font-black text-white tabular-nums">
+                      {formatWon(simpleRes.totalPostTax)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFdViewMode('simpleVsCompound')}
+                    className="min-h-[60px] px-6 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[22px] rounded-2xl cursor-pointer"
+                  >
+                    단리 vs 복리 보기 →
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
+              <div className="lg:col-span-7 bg-white rounded-3xl p-8 border-2 border-slate-200 flex flex-col justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                  <h4 className="text-[28px] font-black text-slate-900">
+                    단리 vs 복리 자산 성장 그래프 ({formatWon(fdPrincipal)} · 연 {fdRate.toFixed(1)}%)
+                  </h4>
+                  <div className="flex items-center gap-5 text-[22px] font-black">
+                    <span className="text-blue-700">● 단리 (원금만 이자)</span>
+                    <span className="text-emerald-700">▲ 복리 (원금+이자에 이자)</span>
+                  </div>
+                </div>
+
+                {/* Clear Linear SVG Comparison Graph */}
+                <svg viewBox="0 0 820 340" className="w-full h-[320px] overflow-visible">
+                  {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                    const y = 270 - ratio * 220;
+                    const val = Math.round(minChartVal + ratio * (maxChartVal - minChartVal));
+                    return (
+                      <g key={idx}>
+                        <line x1={120} y1={y} x2={790} y2={y} stroke="#e2e8f0" strokeWidth={2} />
+                        <text x={110} y={y + 7} textAnchor="end" fontSize={20} fontWeight={700} fill="#475569">
+                          {Math.round(val / 10000).toLocaleString()}만
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {(() => {
+                    const getX = (i: number) =>
+                      150 + (i / Math.max(1, chartYears.length - 1)) * 610;
+                    const getY = (val: number) =>
+                      270 - ((val - minChartVal) / Math.max(1, maxChartVal - minChartVal)) * 220;
+
+                    const simplePts = chartYears
+                      .map((yr, i) => {
+                        const row = compoundRes.yearlyBreakdown[yr - 1];
+                        return `${getX(i)},${getY(row ? row.simpleTotal : fdPrincipal)}`;
+                      })
+                      .join(' ');
+                    const compoundPts = chartYears
+                      .map((yr, i) => {
+                        const row = compoundRes.yearlyBreakdown[yr - 1];
+                        return `${getX(i)},${getY(row ? row.compoundTotal : fdPrincipal)}`;
+                      })
+                      .join(' ');
+
+                    return (
+                      <>
+                        <polyline
+                          fill="none"
+                          stroke="#2563eb"
+                          strokeWidth={5}
+                          strokeDasharray="10 6"
+                          points={simplePts}
+                        />
+                        <polyline
+                          fill="none"
+                          stroke="#059669"
+                          strokeWidth={6}
+                          points={compoundPts}
+                        />
+                        {chartYears.map((yr, i) => {
+                          const row = compoundRes.yearlyBreakdown[yr - 1];
+                          const x = getX(i);
+                          const sy = getY(row ? row.simpleTotal : fdPrincipal);
+                          const cy = getY(row ? row.compoundTotal : fdPrincipal);
+                          return (
+                            <g key={yr}>
+                              <circle cx={x} cy={sy} r={8} fill="#2563eb" />
+                              <circle cx={x} cy={cy} r={9} fill="#059669" />
+                              <text x={x} y={310} textAnchor="middle" fontSize={22} fontWeight={800} fill="#1e293b">
+                                {yr}년
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </svg>
+              </div>
+
+              <div className="lg:col-span-5 bg-slate-900 text-white rounded-3xl p-8 flex flex-col justify-between gap-5">
+                <div className="space-y-4">
+                  <h4 className="text-[28px] font-black text-amber-300">왜 시간이 갈수록 격차가 커질까요?</h4>
+                  <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-2">
+                    <span className="text-[24px] font-black text-blue-300 block">단리 (Simple Interest)</span>
+                    <p className="text-[22px] text-slate-200 font-semibold leading-relaxed">
+                      매년 <strong className="text-white">처음 맡긴 원금에만</strong> 일정한 이자가 붙어 직선으로 늘어납니다.
+                    </p>
+                  </div>
+                  <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-2">
+                    <span className="text-[24px] font-black text-emerald-300 block">복리 (Compound Interest)</span>
+                    <p className="text-[22px] text-slate-200 font-semibold leading-relaxed">
+                      원금에 붙은 <strong className="text-emerald-300">이자에도 다시 이자가 붙어</strong> 시간이 길수록 눈덩이처럼 커집니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {[3, 5, 10, 20].map((y) => (
+                    <button
+                      key={y}
+                      type="button"
+                      onClick={() => setFdYears(y)}
+                      className={`flex-1 min-h-[58px] rounded-xl text-[22px] font-black cursor-pointer tabular-nums ${
+                        fdYears === y ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                      }`}
+                    >
+                      {y}년
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-5 bg-emerald-950/70 border border-emerald-500 rounded-2xl">
+                  <span className="text-[22px] text-emerald-200 font-bold block">
+                    {fdYears}년 뒤 복리가 단리보다 더 받는 금액
+                  </span>
+                  <span className="text-[38px] font-mono font-black text-emerald-300 tabular-nums">
+                    +{formatWon(compoundRes.preTaxInterest - simpleRes.preTaxInterest)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================= STEP 3. 정기적금 + 왜 예금과 이자가 다를까? ================= */}
+      {activeStep === 'step3' && (
+        <div className="flex-1 flex flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-3xl border-2 border-slate-200">
+            <div>
+              <h3 className="text-[30px] xl:text-[34px] font-black text-slate-900">
+                정기적금: 매달 일정 금액을 쌓아 목돈 만들기
+              </h3>
+              <p className="text-[22px] font-bold text-slate-600 mt-1">
+                매월 정해진 금액을 꾸준히 불입해 목표 자금을 모으는 저축 상품입니다.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setSavingsViewMode('calculator')}
+                className={`min-h-[56px] px-6 py-2.5 rounded-xl text-[22px] font-black cursor-pointer ${
+                  savingsViewMode === 'calculator' ? 'bg-emerald-600 text-white' : 'text-slate-700 hover:text-slate-950'
+                }`}
+              >
+                적금 만기 계산기
+              </button>
+              <button
+                type="button"
+                onClick={() => setSavingsViewMode('whyLess')}
+                className={`min-h-[56px] px-6 py-2.5 rounded-xl text-[22px] font-black cursor-pointer ${
+                  savingsViewMode === 'whyLess' ? 'bg-amber-500 text-slate-950' : 'text-slate-700 hover:text-slate-950'
+                }`}
+              >
+                왜 예금과 이자가 다를까?
+              </button>
+            </div>
+          </div>
+
+          {savingsViewMode === 'calculator' ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
+              <div className="lg:col-span-6 bg-white rounded-3xl p-8 border-2 border-slate-200 flex flex-col justify-between gap-6">
+                <h4 className="text-[28px] font-black text-slate-900">매달 적립 조건</h4>
+
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between text-[24px] font-black text-slate-800 mb-3">
+                      <span>월 납입 금액</span>
+                      <span className="font-mono text-emerald-700 tabular-nums">{formatWon(monthlyDeposit)}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[100000, 300000, 500000, 1000000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setMonthlyDeposit(amt)}
+                          className={`min-h-[56px] rounded-xl font-black text-[22px] cursor-pointer ${
+                            monthlyDeposit === amt ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                          }`}
+                        >
+                          {formatWon(amt)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[24px] font-black text-slate-800 mb-3">
+                      <span>적금 연 금리</span>
+                      <span className="font-mono text-blue-700 tabular-nums">연 {savingsRate.toFixed(1)}%</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[3.0, 4.0, 5.0, 6.0].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setSavingsRate(r)}
+                          className={`min-h-[56px] rounded-xl font-black text-[22px] cursor-pointer tabular-nums ${
+                            savingsRate === r ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                          }`}
+                        >
+                          {r.toFixed(1)}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[24px] font-black text-slate-800 mb-3">
+                      <span>적립 기간</span>
+                      <span className="font-mono text-indigo-700 tabular-nums">{savingsMonths}개월</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[12, 24, 36].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSavingsMonths(m)}
+                          className={`min-h-[56px] rounded-xl font-black text-[22px] cursor-pointer tabular-nums ${
+                            savingsMonths === m ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                          }`}
+                        >
+                          {m}개월 ({m / 12}년)
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-6 bg-slate-900 text-white rounded-3xl p-8 flex flex-col justify-between gap-6">
+                <div className="flex items-center gap-3">
+                  <PiggyBank className="w-9 h-9 text-emerald-400" />
+                  <h4 className="text-[28px] font-black text-white">적금 만기 수령 결과</h4>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 flex items-center justify-between">
+                    <span className="text-[24px] font-bold text-slate-300">총 납입 원금</span>
+                    <span className="text-[36px] font-mono font-black text-white tabular-nums">
+                      {formatWon(installmentRes.totalPrincipalWon)}
+                    </span>
+                  </div>
+                  <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 flex items-center justify-between">
+                    <span className="text-[24px] font-bold text-slate-300">세전 총 이자</span>
+                    <span className="text-[36px] font-mono font-black text-emerald-400 tabular-nums">
+                      +{formatWon(installmentRes.preTaxInterest)}
+                    </span>
+                  </div>
+                  <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 flex items-center justify-between">
+                    <span className="text-[24px] font-bold text-slate-300">세후 실수령 이자 (15.4% 공제)</span>
+                    <span className="text-[32px] font-mono font-black text-amber-300 tabular-nums">
+                      +{formatWon(installmentRes.postTaxInterest)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-950/70 border-2 border-emerald-500 rounded-2xl p-6 flex items-center justify-between">
+                  <div>
+                    <span className="text-[22px] font-bold text-emerald-200 block">만기 세후 총액</span>
+                    <span className="text-[40px] xl:text-[46px] font-mono font-black text-white tabular-nums">
+                      {formatWon(installmentRes.totalPostTax)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSavingsViewMode('whyLess')}
+                    className="min-h-[60px] px-6 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[22px] rounded-2xl cursor-pointer"
+                  >
+                    이자 원리 보기 →
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
+              <div className="lg:col-span-7 bg-white rounded-3xl p-8 border-2 border-slate-200 flex flex-col justify-between gap-5">
+                <h4 className="text-[28px] font-black text-slate-900">
+                  납입 회차별 이자가 붙는 기간 비교 (12개월 기준)
+                </h4>
+
+                <p className="text-[24px] font-semibold text-slate-700 leading-relaxed">
+                  적금은 매달 돈을 나누어 넣기 때문에 <strong className="text-emerald-700">1회차 돈은 12개월</strong> 이자가 붙지만,{' '}
+                  <strong className="text-rose-700">마지막 12회차 돈은 1개월</strong>만 이자가 붙습니다.
+                </p>
+
+                {/* 12 Installment Duration Bars */}
+                <div className="space-y-2.5 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                  {[1, 2, 3, 6, 9, 12].map((monthIdx) => {
+                    const activeMonths = 13 - monthIdx;
+                    const widthPercent = Math.round((activeMonths / 12) * 100);
+                    return (
+                      <div key={monthIdx} className="flex items-center gap-4">
+                        <span className="w-24 text-[22px] font-black text-slate-800 shrink-0 tabular-nums">
+                          {monthIdx}회차
+                        </span>
+                        <div className="flex-1 bg-slate-200 h-8 rounded-xl overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-600 flex items-center justify-end pr-3 text-white font-black text-[20px] tabular-nums"
+                            style={{ width: `${widthPercent}%` }}
+                          >
+                            {activeMonths}개월 이자
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="lg:col-span-5 bg-slate-900 text-white rounded-3xl p-8 flex flex-col justify-between gap-6">
+                <h4 className="text-[28px] font-black text-amber-300">
+                  같은 {formatWon(monthlyDeposit * savingsMonths)} · 연 {savingsRate.toFixed(1)}% · {savingsMonths}개월 비교
+                </h4>
+
+                <div className="space-y-4">
+                  <div className="bg-blue-950/70 border-2 border-blue-400 p-6 rounded-2xl">
+                    <span className="text-[22px] font-bold text-blue-200 block">
+                      정기예금 (처음부터 전액 거치)
+                    </span>
+                    <span className="text-[40px] font-mono font-black text-white tabular-nums block mt-1">
+                      +{formatWon(compSameTotal.fixedDeposit.preTaxInterest)}
+                    </span>
+                  </div>
+
+                  <div className="bg-emerald-950/70 border-2 border-emerald-400 p-6 rounded-2xl">
+                    <span className="text-[22px] font-bold text-emerald-200 block">
+                      정기적금 (매월 {formatWon(monthlyDeposit)} 분할 적립)
+                    </span>
+                    <span className="text-[40px] font-mono font-black text-emerald-300 tabular-nums block mt-1">
+                      +{formatWon(compSameTotal.installmentSavings.preTaxInterest)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 text-[22px] font-bold text-slate-200 leading-relaxed">
+                  세전 이자 차이: <strong className="text-amber-300 font-mono tabular-nums">{formatWon(compSameTotal.interestDifference)}</strong> (적금은 평균 약 절반 기간만 예치되기 때문!)
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================= STEP 4. 예금상품 비교 & 예금자보호 1억 원 ================= */}
+      {activeStep === 'step4' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
+          {/* Left: 상황별 알맞은 예금상품 고르기 */}
+          <div className="lg:col-span-6 bg-white rounded-3xl p-8 border-2 border-slate-200 flex flex-col justify-between gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[28px] xl:text-[32px] font-black text-slate-900">
+                  상황별 상품 선택 ({situationIndex + 1} / {SITUATIONS.length})
+                </h3>
+                <div className="flex gap-2">
+                  {SITUATIONS.map((s, idx) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setSituationIndex(idx)}
+                      className={`min-h-[48px] w-12 rounded-xl font-black text-[22px] cursor-pointer ${
+                        idx === situationIndex ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6">
+                <p className="text-[26px] xl:text-[28px] font-black text-slate-900 leading-snug">
+                  &ldquo;{currentSituation.question}&rdquo;
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {(['보통예금', '정기예금', '정기적금'] as const).map((option) => {
+                  const isChosen = chosenForSituation === option;
+                  const isRight = option === currentSituation.answer;
+                  let style = 'bg-slate-100 hover:bg-slate-200 text-slate-900';
+                  if (chosenForSituation) {
+                    if (isRight) style = 'bg-emerald-600 text-white';
+                    else if (isChosen) style = 'bg-rose-600 text-white';
+                  }
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() =>
+                        setSituationAnswers((prev) => ({
+                          ...prev,
+                          [currentSituation.id]: option,
+                        }))
+                      }
+                      className={`min-h-[68px] rounded-2xl font-black text-[24px] cursor-pointer transition-all ${style}`}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {chosenForSituation && (
+                <div
+                  className={`p-5 rounded-2xl border-2 text-[22px] font-bold flex items-start gap-3 ${
+                    chosenForSituation === currentSituation.answer
+                      ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                      : 'bg-rose-50 border-rose-400 text-rose-950'
+                  }`}
+                >
+                  {chosenForSituation === currentSituation.answer ? (
+                    <CheckCircle2 className="w-7 h-7 text-emerald-600 shrink-0 mt-1" />
+                  ) : (
+                    <XCircle className="w-7 h-7 text-rose-600 shrink-0 mt-1" />
+                  )}
+                  <div>
+                    <span className="font-black block">
+                      {chosenForSituation === currentSituation.answer ? '정답입니다!' : `정답은 '${currentSituation.answer}'입니다.`}
+                    </span>
+                    <span className="font-semibold">{currentSituation.reason}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between gap-3">
+              <button
+                type="button"
+                disabled={situationIndex === 0}
+                onClick={() => setSituationIndex((i) => Math.max(0, i - 1))}
+                className="min-h-[56px] px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 disabled:opacity-40 font-black text-[22px] text-slate-900 cursor-pointer"
+              >
+                이전 상황
+              </button>
+              <button
+                type="button"
+                disabled={situationIndex === SITUATIONS.length - 1}
+                onClick={() => setSituationIndex((i) => Math.min(SITUATIONS.length - 1, i + 1))}
+                className="min-h-[56px] px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 font-black text-[22px] text-white cursor-pointer"
+              >
+                다음 상황
+              </button>
+            </div>
+          </div>
+
+          {/* Right: 예금자보호제도 1억 원 & 1.2억 원 퀴즈 */}
+          <div className="lg:col-span-6 bg-slate-900 text-white rounded-3xl p-8 flex flex-col justify-between gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-emerald-400">
+                <ShieldCheck className="w-9 h-9 shrink-0" />
+                <h3 className="text-[28px] xl:text-[32px] font-black text-white">
+                  예금자보호제도: 1인당 최고 1억 원
+                </h3>
+              </div>
+
+              <p className="text-[22px] xl:text-[24px] text-slate-200 font-semibold leading-relaxed">
+                금융기관이 파산하더라도 <strong className="text-emerald-300">1개 금융회사당 1인당 원금 + 소정의 이자를 합쳐 최고 1억 원</strong>까지 법으로 안전하게 보호합니다. (2025년 9월 상향 적용)
+              </p>
+
+              <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4">
+                <p className="text-[24px] font-black text-amber-300 leading-snug">
+                  퀴즈: 같은 A은행에 원금과 이자를 합쳐 1억 2,000만 원을 예금했는데 A은행이 파산했다면 얼마를 돌려받을까요?
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {['1억 2,000만 원 전액', '최고 1억 원까지', '5,000만 원까지'].map((label, idx) => {
+                    const isPicked = protectionQuizChoice === idx;
+                    const isRight = idx === 1;
+                    let cls = 'bg-slate-700 hover:bg-slate-600 text-white';
+                    if (protectionQuizChoice !== null) {
+                      if (isRight) cls = 'bg-emerald-500 text-slate-950';
+                      else if (isPicked) cls = 'bg-rose-600 text-white';
+                    }
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setProtectionQuizChoice(idx)}
+                        className={`min-h-[60px] px-4 py-3 rounded-xl font-black text-[22px] cursor-pointer ${cls}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {protectionQuizChoice !== null && (
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-700 text-[22px] font-bold text-slate-100">
+                    {protectionQuizChoice === 1 ? (
+                      <span className="text-emerald-300">정답! </span>
+                    ) : (
+                      <span className="text-rose-300">오답입니다. </span>
+                    )}
+                    같은 금융회사에서는 최고 1억 원까지만 보호되므로, 1억 원을 넘는 금액은 서로 다른 은행에 나누어 예치해야 안전합니다!
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-slate-800/80 rounded-2xl p-5 border border-slate-700 text-[22px] font-bold text-slate-300 flex items-center gap-3">
+              <TrendingUp className="w-7 h-7 text-amber-400 shrink-0" />
+              <span>예적금은 원금이 안전하지만, 주식·펀드·코인은 예금자보호 대상이 아닙니다.</span>
+            </div>
           </div>
         </div>
       )}

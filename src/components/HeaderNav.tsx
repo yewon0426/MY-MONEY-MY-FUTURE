@@ -16,7 +16,12 @@ interface HeaderNavProps {
   totalPages: number;
   pageTitles: string[];
   unitTitle: string;
+  currentPageTitle: string;
   onPageChange: (page: number) => void;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+  canGoPrev: boolean;
+  canGoNext: boolean;
   onSelectUnit: (unit: number) => void;
   onOpenCurriculum: () => void;
   onReset: () => void;
@@ -30,7 +35,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   totalPages,
   pageTitles,
   unitTitle,
+  currentPageTitle,
   onPageChange,
+  onPrevPage,
+  onNextPage,
+  canGoPrev,
+  canGoNext,
   onSelectUnit,
   onOpenCurriculum,
   onReset,
@@ -42,11 +52,15 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
-      }
+      document.documentElement
+        .requestFullscreen()
+        .then(() => setIsFullscreen(true))
+        .catch(() => {});
+    } else if (document.exitFullscreen) {
+      document
+        .exitFullscreen()
+        .then(() => setIsFullscreen(false))
+        .catch(() => {});
     }
   };
 
@@ -54,133 +68,145 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
   return (
     <header className="w-full bg-slate-900 text-white select-none shadow-lg z-30 shrink-0">
-      {/* Top Main Bar */}
-      <div className="max-w-[1920px] mx-auto px-6 py-2.5 flex items-center justify-between gap-4">
-        {/* Left: Unit Selector & Lesson Title */}
-        <div className="flex items-center gap-3 shrink-0">
+      <div className="max-w-[1920px] mx-auto px-6 py-3 flex items-center justify-between gap-6">
+        {/* Zone 1: Unit Controls & Active Unit Context */}
+        <div className="flex items-center gap-3 shrink-0 min-w-0">
           <button
+            type="button"
             onClick={onOpenCurriculum}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl tracking-wider transition-colors cursor-pointer shadow-sm"
-            title="전체 단원 목차 보기"
+            className="min-h-[48px] flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-base font-black rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0"
+            title="전체 단원 목차 보기 (M)"
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>단원 목차</span>
+            <BookOpen className="w-5 h-5" />
+            <span>목차</span>
           </button>
 
-          {/* Unit 1 / Unit 2 / Unit 3 Direct Toggle Buttons */}
-          <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
-            <button
-              onClick={() => onSelectUnit(1)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                currentUnit === 1
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              UNIT 01
-            </button>
-            <button
-              onClick={() => onSelectUnit(2)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                currentUnit === 2
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              UNIT 02
-            </button>
-            <button
-              onClick={() => onSelectUnit(3)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                currentUnit === 3
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              UNIT 03
-            </button>
+          <div
+            className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700 shrink-0"
+            role="group"
+            aria-label="단원 선택"
+          >
+            {[1, 2, 3].map((unitNum) => {
+              const isActive = currentUnit === unitNum;
+              const activeClass =
+                unitNum === 1
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : unitNum === 2
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-purple-600 text-white shadow-sm';
+              return (
+                <button
+                  key={unitNum}
+                  type="button"
+                  onClick={() => onSelectUnit(unitNum)}
+                  className={`min-h-[40px] px-3.5 py-1.5 rounded-lg text-sm font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    isActive ? activeClass : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  UNIT 0{unitNum}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="h-4 w-px bg-slate-700 hidden sm:block" />
-
-          <h1 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2 truncate max-w-xs md:max-w-md">
-            <span className={`font-black ${
-              currentUnit === 1 ? 'text-blue-400' : currentUnit === 2 ? 'text-emerald-400' : 'text-purple-400'
-            }`}>
-              UNIT 0{currentUnit}
+          <div className="hidden xl:flex items-center gap-2 text-base font-bold text-slate-200 truncate max-w-[360px]">
+            <span className="text-slate-400">·</span>
+            <span className="truncate" title={`${unitTitle} — ${currentPageTitle}`}>
+              {currentPageTitle}
             </span>
-            <span className="truncate text-slate-200">{unitTitle}</span>
-          </h1>
+          </div>
         </div>
 
-        {/* Center: Page Stepper & Dropdown Selector */}
-        <div className="relative flex items-center gap-2">
-          <div className="flex items-center bg-slate-800/90 border border-slate-700 rounded-xl p-1 shadow-inner">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage <= 1}
-              aria-label="이전 페이지 (단축키: 왼쪽 화살표)"
-              title="이전 페이지 (←)"
-              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
+        {/* Zone 2: Single Central Page Navigation */}
+        <div className="relative flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onPrevPage}
+            disabled={!canGoPrev}
+            aria-label="이전 페이지 (←)"
+            title="이전 페이지 (←)"
+            className="min-h-[48px] px-4 py-2 flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-slate-800 text-slate-100 font-bold text-base transition-colors cursor-pointer whitespace-nowrap shrink-0 border border-slate-700"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="hidden sm:inline">이전</span>
+          </button>
 
-            <button
-              onClick={() => setShowPageMenu(!showPageMenu)}
-              className="px-3 py-1 flex items-center gap-2 text-sm font-bold text-slate-200 hover:text-white rounded-lg hover:bg-slate-700/60 transition-colors cursor-pointer"
+          <button
+            type="button"
+            onClick={() => setShowPageMenu(!showPageMenu)}
+            aria-expanded={showPageMenu}
+            aria-label="페이지 목록 열기"
+            className="min-h-[48px] px-5 py-2 flex items-center gap-2.5 text-lg font-black text-white bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors cursor-pointer whitespace-nowrap shrink-0 tabular-nums"
+          >
+            <span
+              className={`font-mono text-xl font-black ${
+                currentUnit === 1
+                  ? 'text-blue-400'
+                  : currentUnit === 2
+                  ? 'text-emerald-400'
+                  : 'text-purple-400'
+              }`}
             >
-              <span className={`font-mono text-base font-extrabold ${currentUnit === 1 ? 'text-blue-400' : 'text-emerald-400'}`}>
-                {currentPage}
-              </span>
-              <span className="text-slate-500">/</span>
-              <span className="font-mono text-slate-400">{totalPages}</span>
-              <List className="w-4 h-4 text-slate-400 ml-1" />
-            </button>
+              {currentPage}
+            </span>
+            <span className="text-slate-500 font-normal">/</span>
+            <span className="font-mono text-slate-300">{totalPages}</span>
+            <List className="w-5 h-5 text-slate-400 ml-1" />
+          </button>
 
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-              aria-label="다음 페이지 (단축키: 오른쪽 화살표)"
-              title="다음 페이지 (→)"
-              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onNextPage}
+            disabled={!canGoNext}
+            aria-label="다음 페이지 (→)"
+            title="다음 페이지 (→)"
+            className="min-h-[48px] px-4 py-2 flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-slate-800 text-slate-100 font-bold text-base transition-colors cursor-pointer whitespace-nowrap shrink-0 border border-slate-700"
+          >
+            <span className="hidden sm:inline">다음</span>
+            <ChevronRight className="w-5 h-5" />
+          </button>
 
-          {/* Quick Page Jump Dropdown */}
           {showPageMenu && (
             <div
-              className="absolute top-12 left-1/2 -translate-x-1/2 w-80 bg-slate-800/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-2 z-50 animate-fade-in"
+              className="fixed inset-0 z-40"
               onClick={() => setShowPageMenu(false)}
-            >
-              <div className="text-xs font-bold text-slate-400 px-3 py-2 border-b border-slate-700 flex justify-between items-center">
-                <span>{currentUnit === 1 ? 'UNIT 01' : 'UNIT 02'} 페이지 목차</span>
-                <span className="text-[10px] text-slate-500 font-mono">1~{totalPages}단계</span>
+              aria-hidden="true"
+            />
+          )}
+
+          {showPageMenu && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[420px] bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-3 z-50">
+              <div className="text-base font-black text-slate-200 px-3 py-2 border-b border-slate-700 flex justify-between items-center">
+                <span>UNIT 0{currentUnit} · {unitTitle}</span>
+                <span className="text-sm text-slate-400 font-mono tabular-nums">
+                  {currentPage} / {totalPages}
+                </span>
               </div>
-              <div className="max-h-80 overflow-y-auto py-1">
+              <div className="max-h-[460px] overflow-y-auto py-2 space-y-1.5">
                 {pageTitles.map((title, idx) => {
                   const pNum = idx + 1;
                   const isActive = pNum === currentPage;
                   return (
                     <button
                       key={pNum}
+                      type="button"
                       onClick={() => {
                         onPageChange(pNum);
                         setShowPageMenu(false);
                       }}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
+                      className={`w-full text-left px-4 py-3 rounded-xl text-base font-bold flex items-center gap-3 transition-colors cursor-pointer ${
                         isActive
                           ? currentUnit === 1
-                            ? 'bg-blue-600 text-white font-bold'
-                            : 'bg-emerald-600 text-white font-bold'
-                          : 'text-slate-300 hover:bg-slate-700/80 hover:text-white'
+                            ? 'bg-blue-600 text-white'
+                            : currentUnit === 2
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-purple-600 text-white'
+                          : 'text-slate-200 hover:bg-slate-700 hover:text-white'
                       }`}
                     >
                       <span
-                        className={`w-5 h-5 rounded-md flex items-center justify-center font-mono text-xs ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-300'
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono text-sm font-black shrink-0 tabular-nums ${
+                          isActive ? 'bg-white/25 text-white' : 'bg-slate-700 text-slate-300'
                         }`}
                       >
                         {pNum}
@@ -194,50 +220,52 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           )}
         </div>
 
-        {/* Right: Smartboard Utility Controls */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Reset Page State */}
+        {/* Zone 3: Smartboard Utility Actions */}
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
+            type="button"
             onClick={onReset}
             title="현재 화면 활동 초기화"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            className="min-h-[48px] flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white border border-slate-700 rounded-xl text-base font-bold transition-all cursor-pointer whitespace-nowrap shrink-0"
           >
             <RotateCcw className="w-4 h-4 text-slate-400" />
-            <span className="hidden md:inline">초기화</span>
+            <span className="hidden lg:inline">초기화</span>
           </button>
 
-          {/* Teacher Guide Trigger */}
           <button
+            type="button"
             onClick={onToggleGuide}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${
+            className={`min-h-[48px] flex items-center gap-2 px-4 py-2 rounded-xl text-base font-black transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0 ${
               isGuideOpen
-                ? 'bg-amber-400 text-slate-950 shadow-amber-400/20'
+                ? 'bg-amber-400 text-slate-950'
                 : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
             }`}
           >
-            <Lightbulb className={`w-4 h-4 ${isGuideOpen ? 'text-slate-950 fill-current' : 'text-amber-400'}`} />
-            <span>교사용 가이드</span>
+            <Lightbulb className={`w-5 h-5 ${isGuideOpen ? 'text-slate-950 fill-current' : 'text-amber-400'}`} />
+            <span>교사용 가이드 (T)</span>
           </button>
 
-          {/* Fullscreen Toggle */}
           <button
+            type="button"
             onClick={toggleFullscreen}
             aria-label="전체 화면 토글"
             title="전체 화면 발표 모드"
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl transition-colors cursor-pointer"
+            className="min-h-[48px] min-w-[48px] flex items-center justify-center p-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700 rounded-xl transition-colors cursor-pointer shrink-0"
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
       {/* Progress Bar Strip */}
-      <div className="w-full bg-slate-800/80 h-1 relative overflow-hidden">
+      <div className="w-full bg-slate-800 h-1.5 relative overflow-hidden">
         <div
           className={`h-full transition-all duration-300 ${
             currentUnit === 1
-              ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400'
-              : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400'
+              ? 'bg-blue-500'
+              : currentUnit === 2
+              ? 'bg-emerald-500'
+              : 'bg-purple-500'
           }`}
           style={{ width: `${progressPercentage}%` }}
         />

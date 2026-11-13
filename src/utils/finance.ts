@@ -544,3 +544,238 @@ export function calculateDemandDepositInterest(
   };
 }
 
+/**
+ * UNIT 02 (Page 3 STEP 3): Virtual Stock Trading Portfolio Engine
+ */
+export interface StockPortfolioState {
+  cashWon: number;
+  sharesHeld: number;
+  avgBuyPrice: number;
+  realizedPnL: number;
+}
+
+export interface StockTradeResult {
+  ok: boolean;
+  error?: string;
+  state: StockPortfolioState;
+  tradeAmountWon: number;
+  tradePnL: number;
+}
+
+export function createInitialStockPortfolio(initialCashWon: number = 1000000): StockPortfolioState {
+  return {
+    cashWon: initialCashWon,
+    sharesHeld: 0,
+    avgBuyPrice: 0,
+    realizedPnL: 0,
+  };
+}
+
+export function executeStockBuy(
+  state: StockPortfolioState,
+  priceWon: number,
+  quantity: number
+): StockTradeResult {
+  const safeQty = Math.floor(quantity);
+  if (safeQty <= 0 || priceWon <= 0) {
+    return {
+      ok: false,
+      error: '매수 수량과 주가는 1 이상이어야 합니다.',
+      state,
+      tradeAmountWon: 0,
+      tradePnL: 0,
+    };
+  }
+
+  const totalCost = priceWon * safeQty;
+  if (totalCost > state.cashWon) {
+    return {
+      ok: false,
+      error: `보유 현금(${formatWon(state.cashWon)})이 부족합니다. 필요 금액: ${formatWon(totalCost)}`,
+      state,
+      tradeAmountWon: totalCost,
+      tradePnL: 0,
+    };
+  }
+
+  const prevValue = state.sharesHeld * state.avgBuyPrice;
+  const newShares = state.sharesHeld + safeQty;
+  const newAvgPrice = Math.round((prevValue + totalCost) / newShares);
+
+  return {
+    ok: true,
+    state: {
+      cashWon: state.cashWon - totalCost,
+      sharesHeld: newShares,
+      avgBuyPrice: newAvgPrice,
+      realizedPnL: state.realizedPnL,
+    },
+    tradeAmountWon: totalCost,
+    tradePnL: 0,
+  };
+}
+
+export function executeStockSell(
+  state: StockPortfolioState,
+  priceWon: number,
+  quantity: number
+): StockTradeResult {
+  const safeQty = Math.floor(quantity);
+  if (safeQty <= 0 || priceWon <= 0) {
+    return {
+      ok: false,
+      error: '매도 수량과 주가는 1 이상이어야 합니다.',
+      state,
+      tradeAmountWon: 0,
+      tradePnL: 0,
+    };
+  }
+
+  if (safeQty > state.sharesHeld) {
+    return {
+      ok: false,
+      error: `보유 수량(${state.sharesHeld}주)보다 많은 수량을 매도할 수 없습니다.`,
+      state,
+      tradeAmountWon: 0,
+      tradePnL: 0,
+    };
+  }
+
+  const proceeds = priceWon * safeQty;
+  const tradePnL = (priceWon - state.avgBuyPrice) * safeQty;
+  const remainingShares = state.sharesHeld - safeQty;
+
+  return {
+    ok: true,
+    state: {
+      cashWon: state.cashWon + proceeds,
+      sharesHeld: remainingShares,
+      avgBuyPrice: remainingShares === 0 ? 0 : state.avgBuyPrice,
+      realizedPnL: state.realizedPnL + tradePnL,
+    },
+    tradeAmountWon: proceeds,
+    tradePnL,
+  };
+}
+
+export function computeStockPortfolioMetrics(
+  state: StockPortfolioState,
+  currentPriceWon: number,
+  initialCashWon: number = 1000000
+): {
+  stockValueWon: number;
+  costBasisWon: number;
+  unrealizedPnL: number;
+  unrealizedRatePercent: number;
+  totalAssetsWon: number;
+  totalNetReturnWon: number;
+  totalNetReturnPercent: number;
+} {
+  const stockValueWon = state.sharesHeld * currentPriceWon;
+  const costBasisWon = state.sharesHeld * state.avgBuyPrice;
+  const unrealizedPnL = state.sharesHeld > 0 ? stockValueWon - costBasisWon : 0;
+  const unrealizedRatePercent =
+    costBasisWon > 0 ? Math.round((unrealizedPnL / costBasisWon) * 1000) / 10 : 0;
+  const totalAssetsWon = state.cashWon + stockValueWon;
+  const totalNetReturnWon = totalAssetsWon - initialCashWon;
+  const totalNetReturnPercent =
+    initialCashWon > 0 ? Math.round((totalNetReturnWon / initialCashWon) * 1000) / 10 : 0;
+
+  return {
+    stockValueWon,
+    costBasisWon,
+    unrealizedPnL,
+    unrealizedRatePercent,
+    totalAssetsWon,
+    totalNetReturnWon,
+    totalNetReturnPercent,
+  };
+}
+
+/**
+ * UNIT 02 (Page 4 STEP 3): Bond Trading Capital Gain + Holding Coupon Result
+ */
+export function calculateBondTradingResult(
+  faceValueWon: number,
+  couponRatePercent: number,
+  purchasePriceWon: number,
+  salePriceWon: number,
+  holdingYears: number
+): {
+  purchasePriceWon: number;
+  salePriceWon: number;
+  capitalGainWon: number;
+  holdingCouponsWon: number;
+  totalReturnWon: number;
+  returnRatePercent: number;
+  isProfit: boolean;
+} {
+  const safeYears = Math.max(0, holdingYears);
+  const capitalGainWon = salePriceWon - purchasePriceWon;
+  const annualCoupon = Math.floor(faceValueWon * (Math.max(0, couponRatePercent) / 100));
+  const holdingCouponsWon = annualCoupon * safeYears;
+  const totalReturnWon = capitalGainWon + holdingCouponsWon;
+  const returnRatePercent =
+    purchasePriceWon > 0 ? Math.round((totalReturnWon / purchasePriceWon) * 1000) / 10 : 0;
+
+  return {
+    purchasePriceWon,
+    salePriceWon,
+    capitalGainWon,
+    holdingCouponsWon,
+    totalReturnWon,
+    returnRatePercent,
+    isProfit: totalReturnWon >= 0,
+  };
+}
+
+/**
+ * UNIT 02 (Page 4 STEP 4): Bond Present Value (Inverse Relationship with Market Rate)
+ */
+export function calculateBondPresentValue(
+  faceValueWon: number,
+  couponRatePercent: number,
+  marketRatePercent: number,
+  remainingYears: number
+): number {
+  const n = Math.max(1, Math.floor(remainingYears));
+  const coupon = faceValueWon * (Math.max(0, couponRatePercent) / 100);
+  const r = Math.max(0.0001, marketRatePercent / 100);
+
+  let pv = 0;
+  for (let t = 1; t <= n; t++) {
+    pv += coupon / Math.pow(1 + r, t);
+  }
+  pv += faceValueWon / Math.pow(1 + r, n);
+
+  return Math.round(pv);
+}
+
+export interface BondRatePoint {
+  ratePercent: number;
+  bondPriceWon: number;
+  diffFromFaceWon: number;
+}
+
+export function generateBondPriceCurve(
+  faceValueWon: number,
+  couponRatePercent: number,
+  remainingYears: number,
+  rates: number[] = [1, 2, 3, 4, 5, 6, 7]
+): BondRatePoint[] {
+  return rates.map((ratePercent) => {
+    const bondPriceWon = calculateBondPresentValue(
+      faceValueWon,
+      couponRatePercent,
+      ratePercent,
+      remainingYears
+    );
+    return {
+      ratePercent,
+      bondPriceWon,
+      diffFromFaceWon: bondPriceWon - faceValueWon,
+    };
+  });
+}
+
+

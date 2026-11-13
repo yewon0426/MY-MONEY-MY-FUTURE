@@ -1,30 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { calculateMonthlySurplus, calculateSavingsProjection, formatManWon } from '../../utils/finance';
-import {
-  Wallet,
-  AlertTriangle,
-  Flame,
-  Plus,
-  Trash2,
-  Calendar,
-  Sparkles,
-  Zap,
-} from 'lucide-react';
+import { Wallet, AlertTriangle, Flame, Plus, Trash2, Calendar, ArrowRight, Zap } from 'lucide-react';
 
 interface Page3Props {
   resetSignal: number;
 }
 
+type SurvivalStep = 'step1' | 'step2';
+
 interface BudgetExpense {
   id: string;
   name: string;
-  amount: number; // in 만원
+  amount: number;
 }
 
 interface EmergencyEvent {
   id: string;
   title: string;
-  amount: number; // in 만원
+  amount: number;
   icon: string;
   applied: boolean;
 }
@@ -32,27 +25,28 @@ interface EmergencyEvent {
 const DEFAULT_EXPENSES: BudgetExpense[] = [
   { id: '1', name: '월세 및 관리비', amount: 65 },
   { id: '2', name: '식비 및 외식·카페', amount: 45 },
-  { id: '3', name: '지하철·버스 및 통신비', amount: 20 },
-  { id: '4', name: '쇼핑 및 취미·문화', amount: 35 },
+  { id: '3', name: '교통 및 통신비', amount: 20 },
+  { id: '4', name: '쇼핑 및 취미·여가', amount: 35 },
   { id: '5', name: '실비보험 및 생필품', amount: 20 },
 ];
 
 const INITIAL_EMERGENCIES: EmergencyEvent[] = [
   { id: 'em1', title: '응급 병원비·치료', amount: 50, icon: '🏥', applied: false },
-  { id: 'em2', title: '갑작스러운 이사·보증금', amount: 100, icon: '📦', applied: false },
-  { id: 'em3', title: '스마트폰 액정 파손', amount: 30, icon: '📱', applied: false },
-  { id: 'em4', title: '친구 결혼식·축의금', amount: 15, icon: '💌', applied: false },
+  { id: 'em2', title: '갑작스러운 이사', amount: 100, icon: '📦', applied: false },
+  { id: 'em3', title: '스마트폰 파손', amount: 30, icon: '📱', applied: false },
+  { id: 'em4', title: '친구 결혼·축의금', amount: 15, icon: '💌', applied: false },
 ];
 
 export const Page3Survival300: React.FC<Page3Props> = ({ resetSignal }) => {
-  const [netSalary, setNetSalary] = useState<number>(265); // 세전 300만 -> 실수령 약 265만
+  const [activeStep, setActiveStep] = useState<SurvivalStep>('step1');
+  const netSalary = 265; // 세전 300만 -> 실수령 약 265만
   const [expenses, setExpenses] = useState<BudgetExpense[]>(DEFAULT_EXPENSES);
   const [emergencies, setEmergencies] = useState<EmergencyEvent[]>(INITIAL_EMERGENCIES);
   const [newExpenseName, setNewExpenseName] = useState<string>('');
   const [newExpenseAmount, setNewExpenseAmount] = useState<string>('10');
 
-  React.useEffect(() => {
-    setNetSalary(265);
+  useEffect(() => {
+    setActiveStep('step1');
     setExpenses(DEFAULT_EXPENSES);
     setEmergencies(INITIAL_EMERGENCIES);
     setNewExpenseName('');
@@ -60,10 +54,7 @@ export const Page3Survival300: React.FC<Page3Props> = ({ resetSignal }) => {
   }, [resetSignal]);
 
   const regularExpenseTotal = expenses.reduce((sum, item) => sum + item.amount, 0);
-  const emergencyTotal = emergencies
-    .filter((e) => e.applied)
-    .reduce((sum, e) => sum + e.amount, 0);
-
+  const emergencyTotal = emergencies.filter((e) => e.applied).reduce((sum, e) => sum + e.amount, 0);
   const totalExpense = regularExpenseTotal + emergencyTotal;
   const surplus = calculateMonthlySurplus(netSalary, totalExpense);
   const projections = calculateSavingsProjection(surplus);
@@ -76,7 +67,7 @@ export const Page3Survival300: React.FC<Page3Props> = ({ resetSignal }) => {
 
   const addCustomExpense = () => {
     if (!newExpenseName.trim()) return;
-    const amt = parseInt(newExpenseAmount, 10) || 10;
+    const amt = Math.max(1, parseInt(newExpenseAmount, 10) || 10);
     setExpenses((prev) => [
       ...prev,
       { id: Date.now().toString(), name: newExpenseName.trim(), amount: amt },
@@ -95,269 +86,291 @@ export const Page3Survival300: React.FC<Page3Props> = ({ resetSignal }) => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col justify-between py-3 px-6 sm:px-8 max-w-[1700px] mx-auto animate-fade-in">
-      {/* Header */}
-      <div className="text-center space-y-1">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">
-          <Wallet className="w-3.5 h-3.5 text-blue-600" />
-          <span>월급 생존 & 저축 시뮬레이터</span>
+    <div className="flex-1 w-full max-w-[1720px] mx-auto px-8 xl:px-12 py-6 flex flex-col gap-6">
+      {/* Header & STEP Tabs */}
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5 border-b border-slate-200 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5 text-[20px] font-bold text-blue-700">
+            <span>UNIT 01</span>
+            <span aria-hidden="true">·</span>
+            <span>PAGE 3</span>
+            <span aria-hidden="true">·</span>
+            <span>월급 300만 원(실수령 265만 원) 기준</span>
+          </div>
+          <h2 className="text-[40px] xl:text-[46px] font-black text-slate-900 tracking-tight leading-tight mt-1">
+            월급 생존 &amp; 돌발 지출 시뮬레이터
+          </h2>
         </div>
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-          "월급 300만 원으로 살아남기"
-        </h2>
-        <p className="text-slate-600 text-sm sm:text-base font-medium">
-          세전 월급 300만 원(실수령액 <span className="font-bold text-blue-700">265만 원</span>)에서 지출을 빼고 남은 돈으로 저축해 보세요.
-        </p>
+
+        <nav
+          aria-label="월급 생존 학습 단계"
+          className="grid grid-cols-2 gap-2.5 bg-slate-200/80 p-2 rounded-2xl shrink-0"
+        >
+          {[
+            { id: 'step1' as const, label: 'STEP 1. 지출 & 돌발 상황' },
+            { id: 'step2' as const, label: 'STEP 2. 흑자·적자 & 저축 예측' },
+          ].map((tab) => {
+            const isActive = activeStep === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveStep(tab.id)}
+                className={`min-h-[60px] px-6 py-3 rounded-xl text-[20px] xl:text-[22px] font-black transition-all cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white/70 text-slate-700 hover:bg-white hover:text-slate-950'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* Main Two-Zone Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 my-4 flex-1">
-        {/* Left Column (7 cols): Income & Expense Builder */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            {/* Net Income Header Banner */}
-            <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-2xl mb-4">
-              <div>
-                <span className="text-xs font-bold text-blue-700 uppercase">한 달 가용 소득 (실수령액)</span>
-                <div className="text-2xl sm:text-3xl font-black text-blue-900 font-mono">
-                  {formatManWon(netSalary)}
+      {/* ================= STEP 1. 지출 & 돌발 상황 ================= */}
+      {activeStep === 'step1' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
+          {/* Left: Regular Expenses */}
+          <div className="lg:col-span-7 bg-white rounded-3xl p-7 border-2 border-slate-200 flex flex-col justify-between gap-4">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <Wallet className="w-7 h-7 text-blue-700" />
+                  <h3 className="text-[28px] font-black text-slate-900">
+                    매달 고정·변동 지출 ({formatManWon(regularExpenseTotal)})
+                  </h3>
                 </div>
+                <span className="px-4 py-1.5 rounded-xl bg-blue-100 text-blue-950 font-black text-[20px] font-mono tabular-nums">
+                  실수령 {formatManWon(netSalary)}
+                </span>
               </div>
-              <div className="text-right text-xs text-blue-600">
-                세전 300만 원 <br /> (세금·4대보험 공제 완료)
-              </div>
-            </div>
 
-            {/* Expenses List */}
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-slate-700">매달 나가는 지출 항목</span>
-              <span className="text-xs text-slate-500 font-medium">
-                총 {expenses.length}개 항목 ({formatManWon(regularExpenseTotal)})
-              </span>
-            </div>
-
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {expenses.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 text-sm"
-                >
-                  <span className="font-bold text-slate-800">{item.name}</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateExpenseAmount(item.id, item.amount - 5)}
-                      disabled={item.amount < 5}
-                      className="w-7 h-7 rounded-lg bg-white border border-slate-300 font-bold hover:bg-slate-200 disabled:opacity-30 cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="w-20 text-center font-mono font-bold text-slate-900">
-                      {formatManWon(item.amount)}
-                    </span>
-                    <button
-                      onClick={() => updateExpenseAmount(item.id, item.amount + 5)}
-                      className="w-7 h-7 rounded-lg bg-white border border-slate-300 font-bold hover:bg-slate-200 cursor-pointer text-indigo-600"
-                    >
-                      +
-                    </button>
-                    <button
-                      onClick={() => removeExpense(item.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                      title="항목 삭제"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+              <div className="space-y-3">
+                {expenses.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200"
+                  >
+                    <span className="font-black text-slate-900 text-[22px]">{item.name}</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => updateExpenseAmount(item.id, item.amount - 5)}
+                        disabled={item.amount < 5}
+                        className="min-h-[52px] min-w-[52px] rounded-xl bg-white border border-slate-300 font-black hover:bg-slate-200 disabled:opacity-30 cursor-pointer text-[22px]"
+                      >
+                        -
+                      </button>
+                      <span className="w-28 text-center font-mono font-black text-slate-900 text-[24px] tabular-nums">
+                        {formatManWon(item.amount)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => updateExpenseAmount(item.id, item.amount + 5)}
+                        className="min-h-[52px] min-w-[52px] rounded-xl bg-white border border-slate-300 font-black hover:bg-slate-200 cursor-pointer text-indigo-700 text-[22px]"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeExpense(item.id)}
+                        className="min-h-[52px] min-w-[52px] text-slate-500 hover:text-rose-600 rounded-xl hover:bg-rose-50 cursor-pointer flex items-center justify-center"
+                        aria-label={`${item.name} 삭제`}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            {/* Add Custom Expense Input */}
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200">
+            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200">
               <input
                 type="text"
-                placeholder="새 지출 추가 (예: 헬스장, OTT 구독)"
+                placeholder="새 지출 항목 (예: 헬스장)"
                 value={newExpenseName}
                 onChange={(e) => setNewExpenseName(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500"
+                className="flex-1 min-w-[200px] min-h-[56px] px-4 text-[20px] border-2 border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500 font-bold"
               />
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={newExpenseAmount}
-                  onChange={(e) => setNewExpenseAmount(e.target.value)}
-                  className="w-16 px-2 py-2 text-xs border border-slate-300 rounded-xl text-center font-mono"
-                />
-                <span className="text-xs text-slate-500 font-bold">만</span>
-              </div>
+              <input
+                type="number"
+                min="1"
+                max="500"
+                value={newExpenseAmount}
+                onChange={(e) => setNewExpenseAmount(e.target.value)}
+                className="w-24 min-h-[56px] px-3 text-[20px] border-2 border-slate-300 rounded-2xl text-center font-mono font-black"
+              />
+              <span className="text-[20px] font-black text-slate-700">만 원</span>
               <button
+                type="button"
                 onClick={addCustomExpense}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1 cursor-pointer"
+                className="min-h-[56px] px-6 bg-slate-900 hover:bg-slate-800 text-white text-[20px] font-black rounded-2xl flex items-center gap-1.5 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> 추가
+                <Plus className="w-5 h-5" />
+                <span>추가</span>
               </button>
             </div>
           </div>
 
-          {/* Unexpected Sudden Event Section */}
-          <div className="mt-4 pt-4 border-t border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 text-rose-700 font-extrabold text-sm">
-                <Flame className="w-4 h-4 text-rose-600" />
-                <span>🚨 예상하지 못한 돌발 지출 이벤트 (클릭해 보세요!)</span>
+          {/* Right: Sudden Events + Live Surplus Preview */}
+          <div className="lg:col-span-5 bg-slate-900 text-white rounded-3xl p-7 flex flex-col justify-between gap-5">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[24px] font-black text-rose-300 flex items-center gap-2">
+                  <Flame className="w-7 h-7 text-rose-400" />
+                  돌발 지출 발생 시켜보기
+                </span>
+                <span className="text-[20px] font-black text-rose-300 tabular-nums">
+                  {emergencyTotal > 0 ? `-${formatManWon(emergencyTotal)}` : '미발생'}
+                </span>
               </div>
-              <span className="text-xs text-rose-600 font-bold">
-                {emergencyTotal > 0 ? `+${formatManWon(emergencyTotal)} 발생` : '미발생'}
-              </span>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                {emergencies.map((em) => (
+                  <button
+                    key={em.id}
+                    type="button"
+                    onClick={() => toggleEmergency(em.id)}
+                    className={`min-h-[120px] p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      em.applied
+                        ? 'bg-rose-950 border-rose-400 ring-2 ring-rose-400/50'
+                        : 'bg-slate-800 border-slate-700 hover:bg-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-3xl">{em.icon}</span>
+                      <span
+                        className={`text-[18px] font-black px-2.5 py-0.5 rounded-lg ${
+                          em.applied ? 'bg-rose-500 text-white' : 'bg-slate-700 text-slate-300'
+                        }`}
+                      >
+                        {em.applied ? '발생!' : '대기'}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-[20px] font-black text-white">{em.title}</div>
+                      <div className="text-[22px] font-mono font-black text-rose-300 mt-0.5 tabular-nums">
+                        -{formatManWon(em.amount)}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {emergencies.map((em) => (
-                <button
-                  key={em.id}
-                  onClick={() => toggleEmergency(em.id)}
-                  className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    em.applied
-                      ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-200'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[22px] font-bold text-slate-300">이번 달 남는 돈 (저축 여력)</span>
+                <span
+                  className={`px-3.5 py-1 rounded-full text-[19px] font-black ${
+                    surplus > 0 ? 'bg-emerald-400 text-slate-950' : 'bg-rose-500 text-white'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-lg">{em.icon}</span>
-                    <span
-                      className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-                        em.applied ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {em.applied ? '발생' : '대기'}
-                    </span>
-                  </div>
-                  <div className="text-xs font-bold truncate">{em.title}</div>
-                  <div className="text-xs font-mono font-extrabold text-rose-600 mt-1">
-                    -{formatManWon(em.amount)}
-                  </div>
-                </button>
+                  {surplus > 0 ? '흑자' : '적자!'}
+                </span>
+              </div>
+              <div
+                className={`text-[42px] font-mono font-black tabular-nums ${
+                  surplus > 0 ? 'text-emerald-400' : 'text-rose-400'
+                }`}
+              >
+                {formatManWon(surplus)}
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveStep('step2')}
+                className="w-full min-h-[60px] bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[22px] rounded-2xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>1·3·5년 저축 누적 결과 보기</span>
+                <ArrowRight className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= STEP 2. 흑자·적자 & 저축 예측 ================= */}
+      {activeStep === 'step2' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
+          <div
+            className={`lg:col-span-6 rounded-3xl p-8 border-2 flex flex-col justify-between gap-6 ${
+              surplus > 0
+                ? 'bg-emerald-950 text-white border-emerald-500'
+                : 'bg-rose-950 text-white border-rose-500'
+            }`}
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[24px] font-black text-slate-200">
+                  이번 달 최종 결산 (실수령 {formatManWon(netSalary)} − 총 지출 {formatManWon(totalExpense)})
+                </span>
+                <span
+                  className={`px-4 py-1.5 rounded-full text-[20px] font-black ${
+                    surplus > 0 ? 'bg-emerald-400 text-slate-950' : 'bg-rose-500 text-white'
+                  }`}
+                >
+                  {surplus > 0 ? '흑자 (저축 가능)' : '적자 (지출 초과!)'}
+                </span>
+              </div>
+
+              <div className="text-[52px] xl:text-[60px] font-black font-mono tabular-nums">
+                {formatManWon(surplus)}
+              </div>
+
+              {surplus <= 0 && (
+                <div className="p-5 bg-rose-500/20 border-2 border-rose-400 rounded-2xl flex items-center gap-3 text-[22px] font-bold text-rose-100">
+                  <AlertTriangle className="w-7 h-7 text-rose-300 shrink-0" />
+                  <span>지출이 수입을 초과했습니다! STEP 1에서 지출을 줄여 흑자를 만들어 보세요.</span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-slate-900/90 rounded-2xl p-6 border border-slate-700 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0">
+                <Zap className="w-6 h-6" />
+              </div>
+              <p className="text-[22px] xl:text-[24px] font-black text-white leading-snug">
+                &ldquo;소득이 아무리 많아도 지출을 관리하지 않으면 미래를 준비할 수 없습니다.&rdquo;
+              </p>
+            </div>
+          </div>
+
+          <div className="lg:col-span-6 bg-white rounded-3xl p-8 border-2 border-slate-200 flex flex-col justify-between gap-5">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Calendar className="w-8 h-8 text-indigo-700" />
+                <h3 className="text-[30px] xl:text-[34px] font-black text-slate-900">
+                  매달 {formatManWon(Math.max(0, surplus))}씩 모은다면?
+                </h3>
+              </div>
+              <p className="text-[22px] font-bold text-slate-600">
+                이자를 제외한 순수 원금 누적 저축액 예측
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {[
+                { label: '1년 (12개월)', value: projections.oneYear, style: 'bg-slate-50 border-slate-200 text-slate-900' },
+                { label: '3년 (36개월)', value: projections.threeYears, style: 'bg-indigo-50 border-indigo-200 text-indigo-950' },
+                { label: '5년 (60개월)', value: projections.fiveYears, style: 'bg-emerald-50 border-emerald-200 text-emerald-950' },
+              ].map((row) => (
+                <div
+                  key={row.label}
+                  className={`flex items-center justify-between p-6 rounded-2xl border-2 ${row.style}`}
+                >
+                  <span className="text-[26px] font-black">{row.label}</span>
+                  <span className="text-[36px] xl:text-[42px] font-black font-mono tabular-nums">
+                    {formatManWon(Math.floor(row.value))}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
         </div>
-
-        {/* Right Column (5 cols): Remaining Balance & Savings Projection */}
-        <div className="lg:col-span-5 flex flex-col justify-between gap-4">
-          {/* Monthly Surplus Card */}
-          <div
-            className={`rounded-3xl p-6 border-2 shadow-sm transition-all ${
-              surplus > 0
-                ? 'bg-gradient-to-br from-emerald-950 via-slate-900 to-indigo-950 text-white border-emerald-500/50'
-                : 'bg-gradient-to-br from-rose-950 via-slate-900 to-red-950 text-white border-rose-500/50'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs uppercase font-bold tracking-wider text-slate-300">
-                이번 달 남는 돈 (저축 여력)
-              </span>
-              <span
-                className={`text-xs font-extrabold px-2.5 py-1 rounded-full ${
-                  surplus > 0 ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'
-                }`}
-              >
-                {surplus > 0 ? '흑자 (저축 가능)' : '적자 발생! 지출 조정 필요'}
-              </span>
-            </div>
-
-            <div className="my-2 flex items-baseline gap-2">
-              <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight tabular-nums">
-                {formatManWon(surplus)}
-              </span>
-              <span className="text-slate-400 text-sm">
-                / 월 (수입 {formatManWon(netSalary)} - 지출 {formatManWon(totalExpense)})
-              </span>
-            </div>
-
-            {surplus <= 0 && (
-              <div className="mt-3 p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl text-xs text-rose-200 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>
-                  지출이 수입을 초과했습니다! 왼쪽에서 불필요한 지출을 줄이거나 돌발 지출을 조정해 보세요.
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Future Savings Projection Cards */}
-          <div className="bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-sm flex-1 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 font-bold text-slate-900 text-base mb-1">
-                <Calendar className="w-5 h-5 text-indigo-600" />
-                <span>매달 {formatManWon(Math.max(0, surplus))}씩 꼬박꼬박 모은다면?</span>
-              </div>
-              <p className="text-xs text-slate-500 mb-4">
-                이자를 제외한 단순 원금 저축 누적액 계산
-              </p>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center">
-                      1년
-                    </span>
-                    <span className="text-xs font-semibold text-slate-700">12개월 누적</span>
-                  </div>
-                  <span className="text-xl font-black text-slate-900 font-mono">
-                    {formatManWon(Math.floor(projections.oneYear))}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-3.5 bg-indigo-50/70 rounded-2xl border border-indigo-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">
-                      3년
-                    </span>
-                    <span className="text-xs font-semibold text-indigo-900">36개월 누적</span>
-                  </div>
-                  <span className="text-xl font-black text-indigo-950 font-mono">
-                    {formatManWon(Math.floor(projections.threeYears))}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-3.5 bg-emerald-50 rounded-2xl border border-emerald-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center">
-                      5년
-                    </span>
-                    <span className="text-xs font-semibold text-emerald-900">60개월 누적</span>
-                  </div>
-                  <span className="text-xl font-black text-emerald-900 font-mono">
-                    {formatManWon(Math.floor(projections.fiveYears))}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
-              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>작은 돈이라도 꾸준히 모으면 큰 종잣돈(시드머니)이 됩니다.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Teacher Key Message Callout Bar */}
-      <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 flex items-center gap-4 border border-slate-800 shadow-md">
-        <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0">
-          <Zap className="w-5 h-5" />
-        </div>
-        <div>
-          <span className="text-xs text-amber-400 font-bold uppercase tracking-wider block">
-            교사용 핵심 메시지
-          </span>
-          <p className="text-base sm:text-lg font-bold text-slate-100">
-            "소득이 많아도 지출을 관리하지 않으면 미래를 준비하기 어렵습니다."
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

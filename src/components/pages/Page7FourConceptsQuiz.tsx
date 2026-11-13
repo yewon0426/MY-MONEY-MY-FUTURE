@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QuizScenario } from '../../types';
 import {
-  HelpCircle,
   Coins,
   CreditCard,
   PiggyBank,
@@ -9,12 +8,14 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
-  RotateCcw,
+  ArrowRight,
 } from 'lucide-react';
 
 interface Page7Props {
   resetSignal: number;
 }
+
+type ConceptsStep = 'step1' | 'step2';
 
 const QUIZ_SCENARIOS: QuizScenario[] = [
   {
@@ -28,7 +29,7 @@ const QUIZ_SCENARIOS: QuizScenario[] = [
   {
     id: 2,
     character: '서연',
-    situation: '시험이 끝난 후 친구들과 영화관에 가서 영화 티켓을 예매하고 고소한 팝콘 세트를 사 먹었다.',
+    situation: '시험이 끝난 후 친구들과 영화관에 가서 영화 티켓을 예매하고 팝콘 세트를 사 먹었다.',
     correctAnswer: '지출',
     subType: '소비지출',
     explanation: '문화생활 서비스와 음식 상품을 구매하기 위해 돈을 대가로 지급했으므로 "지출(소비지출)"에 해당합니다.',
@@ -60,11 +61,13 @@ const QUIZ_SCENARIOS: QuizScenario[] = [
 ];
 
 export const Page7FourConceptsQuiz: React.FC<Page7Props> = ({ resetSignal }) => {
+  const [activeStep, setActiveStep] = useState<ConceptsStep>('step1');
   const [currentScenarioIdx, setCurrentScenarioIdx] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState<boolean>(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    setActiveStep('step1');
     setCurrentScenarioIdx(0);
     setSelectedAnswer(null);
     setShowExplanation(false);
@@ -86,193 +89,236 @@ export const Page7FourConceptsQuiz: React.FC<Page7Props> = ({ resetSignal }) => 
   const isCorrect = selectedAnswer === currentQuiz.correctAnswer;
 
   return (
-    <div className="w-full h-full flex flex-col justify-between p-6 sm:p-10 max-w-[1700px] mx-auto animate-fade-in">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-sm font-bold">
-          <HelpCircle className="w-4 h-4 text-emerald-600" />
-          <span>경제활동 4대 핵심 개념 & 실전 상황 퀴즈</span>
-        </div>
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
-          "소득 · 지출 · 저축 · 투자"
-        </h2>
-        <p className="text-slate-600 text-lg sm:text-xl font-medium">
-          4가지 기본 용어를 확인하고, 아래 학생들의 실제 생활 사례가 어디에 해당하는지 맞춰보세요!
-        </p>
-      </div>
-
-      {/* Top 4 Concept Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 my-4">
-        {/* Income */}
-        <div className="bg-white rounded-3xl p-5 border-2 border-blue-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center mb-2">
-              <Coins className="w-5 h-5" />
-            </div>
-            <h3 className="text-xl font-black text-blue-900">소득 (Income)</h3>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              근로, 사업, 재산 운용 등을 통해 경제활동으로 <strong>얻는 돈</strong>
-            </p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-100 text-xs font-semibold text-blue-700">
-            근로·사업·재산·이전소득
-          </div>
-        </div>
-
-        {/* Expense */}
-        <div className="bg-white rounded-3xl p-5 border-2 border-rose-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center mb-2">
-              <CreditCard className="w-5 h-5" />
-            </div>
-            <h3 className="text-xl font-black text-rose-900">지출 (Expense)</h3>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              생활에 필요한 상품과 서비스를 구매하기 위해 <strong>사용하는 돈</strong>
-            </p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-100 text-xs font-semibold text-rose-700">
-            소비지출 · 비소비지출(세금 등)
-          </div>
-        </div>
-
-        {/* Savings */}
-        <div className="bg-white rounded-3xl p-5 border-2 border-indigo-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-2">
-              <PiggyBank className="w-5 h-5" />
-            </div>
-            <h3 className="text-xl font-black text-indigo-900">저축 (Savings)</h3>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              소득 중 소비하지 않고 미래의 필요를 위해 <strong>남겨 두는 것</strong>
-            </p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-100 text-xs font-semibold text-indigo-700">
-            원금 안전 보존 + 약정 이자
-          </div>
-        </div>
-
-        {/* Investment */}
-        <div className="bg-white rounded-3xl p-5 border-2 border-emerald-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-2">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <h3 className="text-xl font-black text-emerald-900">투자 (Investment)</h3>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              미래의 높은 수익과 성장을 기대하며 <strong>자금을 투입하는 것</strong>
-            </p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-100 text-xs font-semibold text-emerald-700">
-            수익 추구 (원금 손실 위험 동반)
-          </div>
-        </div>
-      </div>
-
-      {/* Main Interactive Classroom Quiz Box */}
-      <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 my-2 flex-1 flex flex-col justify-between">
+    <div className="flex-1 w-full max-w-[1720px] mx-auto px-8 xl:px-12 py-6 flex flex-col gap-6">
+      {/* Header & STEP Tabs */}
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5 border-b border-slate-200 pb-5">
         <div>
-          {/* Quiz Progress & Question */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-extrabold text-xs">
-              실전 교실 퀴즈 ({currentScenarioIdx + 1} / {QUIZ_SCENARIOS.length})
+          <div className="flex items-center gap-2.5 text-[20px] font-bold text-emerald-700">
+            <span>UNIT 01</span>
+            <span aria-hidden="true">·</span>
+            <span>PAGE 7</span>
+            <span aria-hidden="true">·</span>
+            <span>경제활동 4대 개념과 실전 퀴즈</span>
+          </div>
+          <h2 className="text-[40px] xl:text-[46px] font-black text-slate-900 tracking-tight leading-tight mt-1">
+            소득 · 지출 · 저축 · 투자
+          </h2>
+        </div>
+
+        <nav
+          aria-label="4대 개념 학습 단계"
+          className="grid grid-cols-2 gap-2.5 bg-slate-200/80 p-2 rounded-2xl shrink-0"
+        >
+          {[
+            { id: 'step1' as const, label: 'STEP 1. 4대 핵심 개념' },
+            { id: 'step2' as const, label: 'STEP 2. 실전 상황 퀴즈' },
+          ].map((tab) => {
+            const isActive = activeStep === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveStep(tab.id)}
+                className={`min-h-[60px] px-6 py-3 rounded-xl text-[20px] xl:text-[22px] font-black transition-all cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white/70 text-slate-700 hover:bg-white hover:text-slate-950'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* ================= STEP 1. 4대 핵심 개념 ================= */}
+      {activeStep === 'step1' && (
+        <div className="flex-1 flex flex-col justify-between gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-1 items-stretch">
+            <div className="bg-white rounded-3xl p-7 border-2 border-blue-200 flex flex-col justify-between gap-4">
+              <div>
+                <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center mb-4">
+                  <Coins className="w-9 h-9" />
+                </div>
+                <h3 className="text-[30px] font-black text-blue-950 mb-3">소득 (Income)</h3>
+                <p className="text-[22px] xl:text-[24px] font-medium text-slate-800 leading-relaxed">
+                  근로, 사업, 재산 운용 등을 통해 경제활동으로 <strong className="text-blue-800 font-black">얻는 돈</strong>
+                </p>
+              </div>
+              <div className="bg-blue-50 rounded-2xl p-4 text-[19px] font-black text-blue-900">
+                근로소득 · 사업소득 · 재산소득
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl p-7 border-2 border-rose-200 flex flex-col justify-between gap-4">
+              <div>
+                <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mb-4">
+                  <CreditCard className="w-9 h-9" />
+                </div>
+                <h3 className="text-[30px] font-black text-rose-950 mb-3">지출 (Expense)</h3>
+                <p className="text-[22px] xl:text-[24px] font-medium text-slate-800 leading-relaxed">
+                  생활에 필요한 상품과 서비스를 구매하기 위해 <strong className="text-rose-800 font-black">사용하는 돈</strong>
+                </p>
+              </div>
+              <div className="bg-rose-50 rounded-2xl p-4 text-[19px] font-black text-rose-900">
+                소비지출 · 비소비지출(세금·보험)
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl p-7 border-2 border-indigo-200 flex flex-col justify-between gap-4">
+              <div>
+                <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
+                  <PiggyBank className="w-9 h-9" />
+                </div>
+                <h3 className="text-[30px] font-black text-indigo-950 mb-3">저축 (Savings)</h3>
+                <p className="text-[22px] xl:text-[24px] font-medium text-slate-800 leading-relaxed">
+                  소득 중 소비하지 않고 미래의 필요를 위해 <strong className="text-indigo-800 font-black">안전하게 모아 두는 것</strong>
+                </p>
+              </div>
+              <div className="bg-indigo-50 rounded-2xl p-4 text-[19px] font-black text-indigo-900">
+                원금 안전 보존 + 약정 확정 이자
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl p-7 border-2 border-emerald-200 flex flex-col justify-between gap-4">
+              <div>
+                <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+                  <TrendingUp className="w-9 h-9" />
+                </div>
+                <h3 className="text-[30px] font-black text-emerald-950 mb-3">투자 (Investment)</h3>
+                <p className="text-[22px] xl:text-[24px] font-medium text-slate-800 leading-relaxed">
+                  미래의 높은 수익과 성장을 기대하며 <strong className="text-emerald-800 font-black">자금을 투입하는 것</strong>
+                </p>
+              </div>
+              <div className="bg-emerald-50 rounded-2xl p-4 text-[19px] font-black text-emerald-900">
+                높은 수익 기대 + 원금 손실 위험
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 text-white rounded-3xl p-7 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <span className="text-[24px] font-bold text-slate-100">
+              소득은 씨앗, 지출은 오늘 먹는 양식, 저축은 비상 곡식, 투자는 미래를 위해 밭에 뿌리는 거름입니다.
             </span>
-            <div className="flex items-center gap-2">
-              {QUIZ_SCENARIOS.map((_, idx) => (
+            <button
+              type="button"
+              onClick={() => setActiveStep('step2')}
+              className="min-h-[64px] px-7 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[22px] rounded-2xl flex items-center gap-2.5 cursor-pointer shrink-0"
+            >
+              <span>실전 상황 퀴즈 풀기</span>
+              <ArrowRight className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ================= STEP 2. 실전 상황 퀴즈 ================= */}
+      {activeStep === 'step2' && (
+        <div className="bg-slate-900 text-white rounded-3xl p-8 flex-1 flex flex-col justify-between gap-6">
+          {/* Progress & Scenario Number Buttons */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <span className="px-5 py-2 rounded-full bg-amber-400 text-slate-950 font-black text-[22px]">
+              문제 {currentScenarioIdx + 1} / {QUIZ_SCENARIOS.length} · {currentQuiz.character}의 사례
+            </span>
+
+            <div className="flex items-center gap-2.5">
+              {QUIZ_SCENARIOS.map((sc, idx) => (
                 <button
-                  key={idx}
+                  key={sc.id}
+                  type="button"
                   onClick={() => {
                     setCurrentScenarioIdx(idx);
                     setSelectedAnswer(null);
                     setShowExplanation(false);
                   }}
-                  className={`w-3 h-3 rounded-full transition-all cursor-pointer ${
-                    currentScenarioIdx === idx ? 'bg-amber-400 scale-125' : 'bg-slate-700 hover:bg-slate-500'
+                  aria-label={`${idx + 1}번 문제로 이동`}
+                  className={`min-h-[52px] min-w-[52px] rounded-xl font-black text-[20px] cursor-pointer transition-all ${
+                    currentScenarioIdx === idx
+                      ? 'bg-amber-400 text-slate-950'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
-                />
+                >
+                  {idx + 1}
+                </button>
               ))}
             </div>
           </div>
 
           {/* Scenario Text */}
-          <div className="bg-slate-800/90 rounded-2xl p-6 border border-slate-700 mb-6">
-            <div className="text-xs font-bold text-slate-400 mb-1">
-              상황 제시 [{currentQuiz.character}의 하루]
-            </div>
-            <p className="text-xl sm:text-2xl font-bold text-white leading-relaxed">
-              "{currentQuiz.situation}"
+          <div className="bg-slate-800 rounded-3xl p-8 border-2 border-slate-700">
+            <p className="text-[30px] xl:text-[36px] font-black text-white leading-relaxed">
+              &ldquo;{currentQuiz.situation}&rdquo;
             </p>
           </div>
 
-          {/* 4 Choices Buttons */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          {/* 4 Large Choices */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {(['소득', '지출', '저축', '투자'] as const).map((choice) => {
               const isSelected = selectedAnswer === choice;
               const isChoiceCorrect = choice === currentQuiz.correctAnswer;
-              let btnClass = 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700';
+              let btnClass = 'bg-slate-800 text-slate-100 border-slate-700 hover:bg-slate-700';
 
               if (showExplanation) {
                 if (isChoiceCorrect) {
-                  btnClass = 'bg-emerald-600 text-white border-emerald-400 ring-4 ring-emerald-500/30';
+                  btnClass = 'bg-emerald-600 text-white border-emerald-400 ring-4 ring-emerald-400/50';
                 } else if (isSelected && !isChoiceCorrect) {
-                  btnClass = 'bg-rose-600 text-white border-rose-400 ring-4 ring-rose-500/30';
+                  btnClass = 'bg-rose-600 text-white border-rose-400 ring-4 ring-rose-400/50';
                 }
               }
 
               return (
                 <button
                   key={choice}
+                  type="button"
                   onClick={() => handleSelect(choice)}
-                  className={`py-4 px-6 rounded-2xl border-2 font-black text-xl sm:text-2xl transition-all cursor-pointer flex items-center justify-center gap-2 ${btnClass}`}
+                  className={`min-h-[84px] px-6 rounded-2xl border-2 font-black text-[30px] transition-all cursor-pointer flex items-center justify-center gap-3 active:scale-95 ${btnClass}`}
                 >
                   <span>{choice}</span>
-                  {showExplanation && isChoiceCorrect && (
-                    <CheckCircle2 className="w-5 h-5 text-white" />
-                  )}
-                  {showExplanation && isSelected && !isChoiceCorrect && (
-                    <XCircle className="w-5 h-5 text-white" />
-                  )}
+                  {showExplanation && isChoiceCorrect && <CheckCircle2 className="w-8 h-8" />}
+                  {showExplanation && isSelected && !isChoiceCorrect && <XCircle className="w-8 h-8" />}
                 </button>
               );
             })}
           </div>
-        </div>
 
-        {/* Feedback & Rationale Reveal */}
-        {showExplanation && (
-          <div className="mt-6 pt-5 border-t border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`px-2.5 py-0.5 rounded-md text-xs font-black ${
-                    isCorrect ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'
-                  }`}
-                >
-                  {isCorrect ? '정답입니다! 🎉' : '다시 생각해 볼까요? 🤔'}
-                </span>
-                <span className="text-xs text-amber-300 font-bold">
-                  상세 분류: {currentQuiz.subType}
-                </span>
+          {/* Feedback Reveal */}
+          {showExplanation ? (
+            <div className="bg-slate-800/90 rounded-3xl p-6 border-2 border-slate-700 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span
+                    className={`px-4 py-1.5 rounded-xl text-[20px] font-black ${
+                      isCorrect ? 'bg-emerald-400 text-slate-950' : 'bg-rose-500 text-white'
+                    }`}
+                  >
+                    {isCorrect ? '정답입니다!' : '오답 — 다시 확인해 보세요!'}
+                  </span>
+                  <span className="text-[22px] font-black text-amber-300">
+                    상세 분류: {currentQuiz.subType}
+                  </span>
+                </div>
+                <p className="text-[24px] font-bold text-slate-100 leading-relaxed">
+                  {currentQuiz.explanation}
+                </p>
               </div>
-              <p className="text-slate-200 text-base font-medium">
-                {currentQuiz.explanation}
-              </p>
+
+              <button
+                type="button"
+                onClick={nextQuiz}
+                className="min-h-[64px] px-7 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-2xl text-[22px] flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                <span>다음 문제</span>
+                <ChevronRight className="w-6 h-6" />
+              </button>
             </div>
-
-            <button
-              onClick={nextQuiz}
-              className="px-6 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-sm flex items-center gap-2 shadow-md transition-all shrink-0 cursor-pointer"
-            >
-              <span>다음 문제 풀기</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Footer Callout */}
-      <div className="text-center text-xs text-slate-500 font-semibold pt-1">
-        💡 소득은 씨앗, 지출은 오늘 먹는 양식, 저축은 곳간에 두는 비상 곡식, 투자는 미래를 위해 밭에 뿌리는 거름입니다.
-      </div>
+          ) : (
+            <div className="p-5 bg-slate-800/50 rounded-2xl text-center text-[22px] font-bold text-slate-300">
+              위 4가지 개념 중 하나를 선택하면 정답과 해설이 공개됩니다.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

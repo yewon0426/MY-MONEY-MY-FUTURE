@@ -36,8 +36,6 @@ import { Page06RiskCards } from './components/pages/unit3/Page06RiskCards';
 import { Page07ChooseMyProduct } from './components/pages/unit3/Page07ChooseMyProduct';
 import { Page08ComprehensiveChallenge } from './components/pages/unit3/Page08ComprehensiveChallenge';
 
-import { ChevronLeft, ChevronRight, Lightbulb, BookOpen } from 'lucide-react';
-
 const UNIT1_PAGES_COUNT = 11;
 const UNIT2_PAGES_COUNT = 7;
 const UNIT3_PAGES_COUNT = 8;
@@ -260,7 +258,12 @@ export default function App() {
         totalPages={totalPagesInUnit}
         pageTitles={pageTitles}
         unitTitle={unitTitle}
+        currentPageTitle={pageTitles[currentPage - 1]}
         onPageChange={(page) => setCurrentPage(page)}
+        onPrevPage={handlePrevPage}
+        onNextPage={handleNextPage}
+        canGoPrev={!isFirstOverallPage}
+        canGoNext={!isLastOverallPage}
         onSelectUnit={handleSelectUnit}
         onOpenCurriculum={() => setIsCurriculumOpen(true)}
         onReset={handleResetCurrentPage}
@@ -269,58 +272,9 @@ export default function App() {
       />
 
       {/* Main Presentation Stage */}
-      <main className="flex-1 overflow-y-auto relative flex flex-col justify-between">
-        {renderPage()}
-
-        {/* Smartboard Bottom Quick Step Bar */}
-        <div className="w-full px-6 py-2.5 bg-white/70 backdrop-blur-xs border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500 shrink-0">
-          <button
-            onClick={handlePrevPage}
-            disabled={isFirstOverallPage}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 font-bold transition-all cursor-pointer text-slate-700"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">이전 (←)</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span
-              className={`font-black px-2 py-0.5 rounded text-[11px] ${
-                currentUnit === 1
-                  ? 'bg-blue-100 text-blue-800'
-                  : currentUnit === 2
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-purple-100 text-purple-800'
-              }`}
-            >
-              UNIT 0{currentUnit}
-            </span>
-            <span className="font-extrabold text-slate-700">
-              PAGE {currentPage} / {totalPagesInUnit}
-            </span>
-            <span className="hidden md:inline text-slate-400">·</span>
-            <span className="hidden md:inline font-medium text-slate-600 truncate max-w-md">
-              {pageTitles[currentPage - 1]}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsGuideOpen(true)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 font-bold text-amber-800 border border-amber-200/80 transition-all cursor-pointer"
-            >
-              <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
-              <span>지도 팁 (T)</span>
-            </button>
-            <button
-              onClick={handleNextPage}
-              disabled={isLastOverallPage}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-30 font-bold text-white transition-all cursor-pointer"
-            >
-              <span className="hidden sm:inline">다음 (→)</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+      <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
+        <div className="flex-1 w-full min-h-0 overflow-y-auto flex flex-col">
+          {renderPage()}
         </div>
       </main>
 
