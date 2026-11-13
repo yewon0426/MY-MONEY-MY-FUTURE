@@ -1,4 +1,9 @@
 import { TeacherGuide } from '../types';
+import {
+  TEACHER_GUIDES_UNIT4,
+  TEACHER_GUIDES_UNIT5,
+  TEACHER_GUIDES_UNIT6,
+} from './teacherGuidesUnit4to6';
 
 export const TEACHER_GUIDES: Record<number, TeacherGuide> = {
   1: {
@@ -380,6 +385,8 @@ export const TEACHER_GUIDES_UNIT3: Record<number, TeacherGuide> = {
   }
 };
 
+export { TEACHER_GUIDES_UNIT4, TEACHER_GUIDES_UNIT5, TEACHER_GUIDES_UNIT6 };
+
 export function getTeacherGuide(unit: number, page: number): TeacherGuide | undefined {
   if (unit === 1) {
     return TEACHER_GUIDES_UNIT1[page];
@@ -387,6 +394,12 @@ export function getTeacherGuide(unit: number, page: number): TeacherGuide | unde
     return TEACHER_GUIDES_UNIT2[page];
   } else if (unit === 3) {
     return TEACHER_GUIDES_UNIT3[page];
+  } else if (unit === 4) {
+    return TEACHER_GUIDES_UNIT4[page];
+  } else if (unit === 5) {
+    return TEACHER_GUIDES_UNIT5[page];
+  } else if (unit === 6) {
+    return TEACHER_GUIDES_UNIT6[page];
   }
   return undefined;
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, CheckCircle2, Sparkles, ChevronRight, Lock } from 'lucide-react';
+import { X, BookOpen, CheckCircle2, Sparkles, ChevronRight } from 'lucide-react';
 
 interface CurriculumModalProps {
   isOpen: boolean;
@@ -13,7 +13,7 @@ interface UnitInfo {
   title: string;
   subtitle: string;
   pagesCount: number;
-  status: 'completed' | 'active' | 'upcoming';
+  status: 'completed' | 'active';
   topics: string[];
 }
 
@@ -43,7 +43,7 @@ const UNITS: UnitInfo[] = [
     title: '금융 자산의 종류와 특징',
     subtitle: '예적금, 주식(가상매매), 채권(금리-가격), 펀드·ETF, 보험·연금',
     pagesCount: 7,
-    status: 'active',
+    status: 'completed',
     topics: [
       '금융 자산 vs 실물 자산 구분',
       '보통예금·정기예금·정기적금 & 1억 원 예금자보호',
@@ -59,7 +59,7 @@ const UNITS: UnitInfo[] = [
     title: '합리적인 자산 관리와 금융 의사결정',
     subtitle: '3대 원칙, 위험과 기대수익, 기회비용, 분산 투자 포트폴리오',
     pagesCount: 8,
-    status: 'active',
+    status: 'completed',
     topics: [
       '100만 원, 어디에 둘까? (상황별 선택)',
       '자산 관리 3대 원칙 (삼각형 시각화)',
@@ -73,27 +73,51 @@ const UNITS: UnitInfo[] = [
   },
   {
     number: 4,
-    title: '경제·환경 변화와 금융 의사 결정',
-    subtitle: '기준금리, 인플레이션, 환율 변동과 나의 금융생활',
-    pagesCount: 5,
-    status: 'upcoming',
-    topics: ['물가상승과 실질 금리', '한국은행 기준금리 정책', '글로벌 환율과 자산'],
+    title: '금융 환경의 변화와 자산 가치',
+    subtitle: '기준금리·대출이자, 인플레이션과 실질 수익률, 환율과 거시 충격 실험',
+    pagesCount: 7,
+    status: 'active',
+    topics: [
+      '같은 돈 100만 원, 5년 뒤 가치 변화',
+      '예금 금리 vs 대출 금리 시뮬레이터',
+      '금리 상승·하락이 금융상품에 미치는 영향',
+      '물가 상승과 실질 구매력 계산',
+      '명목 수익률 vs 실질 수익률(피셔)',
+      '환율 변동과 글로벌 금융 계산',
+      '금리·물가·환율 가상 충격 실험실',
+    ],
   },
   {
     number: 5,
-    title: '생애 주기별 소득과 소비',
-    subtitle: '유년기-청년기-중장년기-노년기 생애 주기 곡선 분석',
-    pagesCount: 5,
-    status: 'upcoming',
-    topics: ['소득과 소비의 불일치', '적자-흑자-적자 생애 곡선', '생애 재무 이벤트'],
+    title: '생애 주기와 소득·지출',
+    subtitle: '생애 4단계 특징, 소득·소비 생애 곡선, 기간별 목표와 보험·연금',
+    pagesCount: 6,
+    status: 'active',
+    topics: [
+      '인생에서 큰돈이 필요한 7가지 순간',
+      '청소년기·청년기·중장년기·노년기 비교',
+      '소득과 소비의 생애 곡선(적자·흑자·노후)',
+      '단기·중기·장기 재무 목표 계산',
+      '생애 위험 대비 보험료·보험금 & 3층 연금',
+      '생애 단계별 금융 설계 실습실',
+    ],
   },
   {
     number: 6,
-    title: '나의 미래를 위한 금융 생활 설계',
-    subtitle: '인생 100세 시대 나만의 평생 재무 계획 포트폴리오 수립',
-    pagesCount: 5,
-    status: 'upcoming',
-    topics: ['나만의 재무 목표 로드맵', '가상 은퇴 시뮬레이션', '최종 금융 생활 선언문'],
+    title: '미래를 위한 금융 생활 설계',
+    subtitle: '월 250만 원 실전 예산·포트폴리오·위기대응·진단 및 PDF 설계서 완성',
+    pagesCount: 8,
+    status: 'active',
+    topics: [
+      '나의 첫 월급 250만 원 배분 투표',
+      '9개 항목 월간 예산 설계 (초과 경고)',
+      '소비와 저축의 균형 & 비상자금',
+      '나만의 금융상품 포트폴리오 & 선택 이유',
+      '5대 돌발 상황 및 경제 충격 대응',
+      '재무 목표 설정과 달성 가능성 검증',
+      '6대 기준 종합 진단 및 수정 보완',
+      '완성! 나의 첫 금융 생활 설계서 (PDF/인쇄)',
+    ],
   },
 ];
 
@@ -128,7 +152,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                 2022 개정 고등학교 통합사회2 · 자산 관리와 금융 생활 설계
               </span>
               <h2 id="curriculum-modal-title" className="text-[28px] xl:text-[32px] font-black text-white">
-                전체 단원 목차
+                전체 단원 목차 (총 6단원 · 47페이지)
               </h2>
             </div>
           </div>
@@ -146,7 +170,18 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
         <div className="p-8 overflow-y-auto space-y-5 bg-[#FDFBF7]">
           {UNITS.map((unit) => {
             const isCurrent = unit.number === currentUnit;
-            const isAvailable = unit.status !== 'upcoming';
+            const unitLabelColor =
+              unit.number === 1
+                ? 'text-blue-700'
+                : unit.number === 2
+                ? 'text-emerald-700'
+                : unit.number === 3
+                ? 'text-purple-700'
+                : unit.number === 4
+                ? 'text-amber-700'
+                : unit.number === 5
+                ? 'text-teal-700'
+                : 'text-indigo-700';
 
             return (
               <div
@@ -154,40 +189,20 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                 className={`p-6 rounded-3xl border-2 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 ${
                   isCurrent
                     ? 'bg-blue-50 border-blue-500 shadow-md'
-                    : isAvailable
-                    ? 'bg-white border-slate-200 hover:border-slate-300'
-                    : 'bg-slate-50 border-slate-200 opacity-65'
+                    : 'bg-white border-slate-200 hover:border-slate-300'
                 }`}
               >
                 <div className="space-y-2 flex-1">
                   <div className="flex flex-wrap items-center gap-3 text-base font-black">
-                    <span
-                      className={
-                        unit.number === 1
-                          ? 'text-blue-700'
-                          : unit.number === 2
-                          ? 'text-emerald-700'
-                          : unit.number === 3
-                          ? 'text-purple-700'
-                          : 'text-slate-500'
-                      }
-                    >
-                      UNIT 0{unit.number}
-                    </span>
+                    <span className={unitLabelColor}>UNIT 0{unit.number}</span>
                     <span className="text-slate-300">·</span>
-                    {unit.status === 'completed' && (
+                    {unit.status === 'completed' ? (
                       <span className="text-blue-800 flex items-center gap-1.5">
                         <CheckCircle2 className="w-5 h-5" /> {unit.pagesCount}차시 완성
                       </span>
-                    )}
-                    {unit.status === 'active' && (
+                    ) : (
                       <span className="text-emerald-800 flex items-center gap-1.5">
                         <Sparkles className="w-5 h-5" /> {unit.pagesCount}차시 학습 가능
-                      </span>
-                    )}
-                    {unit.status === 'upcoming' && (
-                      <span className="text-slate-500 flex items-center gap-1.5">
-                        <Lock className="w-4 h-4" /> 추후 제작 예정
                       </span>
                     )}
                   </div>
@@ -199,27 +214,21 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                 </div>
 
                 <div className="shrink-0">
-                  {isAvailable ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectUnit(unit.number);
-                        onClose();
-                      }}
-                      className={`min-h-[60px] px-7 py-3 rounded-2xl font-black text-xl transition-all flex items-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap ${
-                        isCurrent
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'bg-slate-900 text-white hover:bg-slate-800'
-                      }`}
-                    >
-                      <span>{isCurrent ? '현재 학습 중' : '이 단원으로 이동'}</span>
-                      <ChevronRight className="w-6 h-6" />
-                    </button>
-                  ) : (
-                    <span className="inline-block text-lg text-slate-500 font-bold px-5 py-3 bg-slate-100 rounded-2xl">
-                      추후 제작 예정
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectUnit(unit.number);
+                      onClose();
+                    }}
+                    className={`min-h-[60px] px-7 py-3 rounded-2xl font-black text-xl transition-all flex items-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap ${
+                      isCurrent
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-slate-900 text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <span>{isCurrent ? '현재 학습 중' : '이 단원으로 이동'}</span>
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
                 </div>
               </div>
             );
@@ -228,7 +237,9 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
         {/* Footer */}
         <div className="px-8 py-4 bg-white border-t border-slate-200 flex items-center justify-between text-lg text-slate-700 shrink-0">
-          <span className="font-bold">UNIT 01 (11p) · UNIT 02 (7p) · UNIT 03 (8p) 총 26페이지</span>
+          <span className="font-bold">
+            UNIT 01(11p) · 02(7p) · 03(8p) · 04(7p) · 05(6p) · 06(8p) 총 47페이지
+          </span>
           <button
             type="button"
             onClick={onClose}

@@ -280,3 +280,103 @@ test('calculateBondPresentValue and generateBondPriceCurve show inverse rate-pri
   assert.equal(curve[1].bondPriceWon, 1000000);
 });
 
+import {
+  calculatePurchasingPower,
+  calculateRealReturn,
+  calculateExchangeConversion,
+  calculateLoanVsDepositImpact,
+  calculateMonthlySavingsRequired,
+  generateLifeCycleModelCurve,
+  createInitialUnit6Plan,
+  evaluateMonthlyBudget,
+  evaluateEconomicShock,
+  evaluateGoalFeasibility,
+  diagnoseFinancialPlan,
+} from './finance';
+
+test('UNIT 04: calculatePurchasingPower reflects inflation erosion over 5 years', () => {
+  const res = calculatePurchasingPower(1000000, 4, 5);
+  // (1.04)^5 ≈ 1.21665 -> future cost ~ 1,216,653, real purchasing power ~ 821,927
+  assert.ok(res.futureEquivalentCostWon > 1210000 && res.futureEquivalentCostWon < 1220000);
+  assert.ok(res.realPurchasingPowerWon > 820000 && res.realPurchasingPowerWon < 825000);
+  assert.ok(res.purchasingPowerLossPercent > 17 && res.purchasingPowerLossPercent < 18.5);
+});
+
+test('UNIT 04: calculateRealReturn distinguishes exact Fisher equation from simple approximation', () => {
+  // 3% nominal vs 5% inflation -> exact = (1.03/1.05 - 1)*100 = -1.90%, approx = -2%
+  const res = calculateRealReturn(3, 5, 1000000);
+  assert.equal(res.approxRealRatePercent, -2);
+  assert.equal(res.exactRealRatePercent, -1.9);
+  assert.equal(res.nominalEndingWon, 1030000);
+  assert.ok(res.realPurchasingPowerEndingWon < 1000000);
+  assert.equal(res.isPurchasingPowerGain, false);
+
+  // Positive real return check: 6% nominal vs 2% inflation -> approx 4%, exact ~3.92%
+  const pos = calculateRealReturn(6, 2, 1000000);
+  assert.equal(pos.approxRealRatePercent, 4);
+  assert.equal(pos.exactRealRatePercent, 3.92);
+  assert.equal(pos.isPurchasingPowerGain, true);
+});
+
+test('UNIT 04: calculateExchangeConversion reflects USD/KRW rate and currency direction', () => {
+  const weakerKrw = calculateExchangeConversion(1000, 1450, 1350);
+  assert.equal(weakerKrw.krwAmount, 1450000);
+  assert.equal(weakerKrw.differenceKrw, 100000);
+  assert.equal(weakerKrw.krwValueStatus, 'weaker');
+
+  const strongerKrw = calculateExchangeConversion(1000, 1250, 1350);
+  assert.equal(strongerKrw.krwAmount, 1250000);
+  assert.equal(strongerKrw.differenceKrw, -100000);
+  assert.equal(strongerKrw.krwValueStatus, 'stronger');
+});
+
+test('UNIT 04: calculateLoanVsDepositImpact calculates deposit after-tax and loan cost', () => {
+  const res = calculateLoanVsDepositImpact(10000000, 3.5, 5.5, 1);
+  assert.equal(res.depositInterestPreTaxWon, 350000);
+  assert.equal(res.loanInterestCostWon, 550000);
+  assert.equal(res.spreadPercent, 2);
+});
+
+test('UNIT 05: calculateMonthlySavingsRequired & life-cycle model work accurately', () => {
+  const simple = calculateMonthlySavingsRequired(12000000, 24, 0);
+  assert.equal(simple.monthlyRequiredSimpleWon, 500000);
+  assert.equal(simple.monthlyRequiredWithRateWon, 500000);
+
+  const withRate = calculateMonthlySavingsRequired(12000000, 24, 4);
+  assert.ok(withRate.monthlyRequiredWithRateWon < 500000);
+
+  const curve = generateLifeCycleModelCurve();
+  assert.equal(curve.length, 7);
+  assert.ok(curve[0].netSavingIndex < 0); // 10대 적자
+  assert.ok(curve[3].netSavingIndex > 0); // 40대 흑자
+  assert.ok(curve[6].netSavingIndex < 0); // 70대+ 적자
+});
+
+test('UNIT 06: budget evaluation, economic shock, goal feasibility, and 6-criteria diagnosis', () => {
+  const plan = createInitialUnit6Plan();
+  const budgetEval = evaluateMonthlyBudget(plan.monthlyIncomeMan, plan.budget);
+  assert.equal(budgetEval.totalAllocatedMan, 250);
+  assert.equal(budgetEval.isOverBudget, false);
+  assert.equal(budgetEval.savingsAndInvestMan, 85);
+
+  const overEval = evaluateMonthlyBudget(250, { ...plan.budget, leisure: 50 });
+  assert.equal(overEval.isOverBudget, true);
+  assert.equal(overEval.overAmountMan, 28);
+
+  const medicalShock = evaluateEconomicShock(plan.monthlyIncomeMan, plan.budget, plan.emergencyFundMan, 'medical');
+  assert.equal(medicalShock.remainingEmergencyFundMan, 230);
+  assert.equal(medicalShock.isEmergencyCovered, true);
+
+  const incomeShock = evaluateEconomicShock(plan.monthlyIncomeMan, plan.budget, 300, 'incomeDrop');
+  assert.equal(incomeShock.adjustedMonthlyBalanceMan, -30);
+
+  const goalCheck = evaluateGoalFeasibility(3000, 36, 85, 0);
+  assert.equal(goalCheck.projectedTotalMan, 3060);
+  assert.equal(goalCheck.isAchievable, true);
+
+  const diag = diagnoseFinancialPlan(plan);
+  assert.equal(diag.criteria.length, 6);
+  assert.equal(diag.metCount, 6);
+});
+
+
